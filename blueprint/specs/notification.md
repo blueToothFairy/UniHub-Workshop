@@ -6,7 +6,7 @@ Gửi thông báo đến sinh viên qua nhiều kênh sau các sự kiện quan 
 
 ---
 
-## Kiến trúc Notification
+## Luồng chính
 
 ```
 Express Request Handler
@@ -185,6 +185,23 @@ router.post('/registrations', authMiddleware, async (req, res) => {
 ```
 
 ---
+
+## Kịch bản lỗi
+
+### E1: Email provider timeout hoac fail tam thoi
+
+- Worker ghi nhan job that bai va de Bull retry toi da 3 lan voi exponential backoff.
+- API dang ky van tra response thanh cong vi thong bao chay bat dong bo.
+
+### E2: Kenh thong bao moi duoc bat nhung nguoi dung chua lien ket tai khoan
+
+- Channel handler bo qua nguoi dung khong du dieu kien, ghi log canh bao.
+- Cac kenh con lai van gui binh thuong, khong lam fail ca job.
+
+### E3: Notification log ghi DB that bai sau khi gui thanh cong
+
+- Worker retry buoc ghi log.
+- Neu van that bai sau retry, he thong canh bao qua monitoring nhung khong gui lai thong bao de tranh duplicate.
 
 ## Các loại thông báo
 

@@ -930,6 +930,221 @@ router.post('/payments', authMiddleware, async (req, res) => {
 
 ---
 
+## Kiến trúc UI và Frontend
+
+### 1. Phân tách ứng dụng theo vai trò người dùng
+
+**Quyết định:** Tách trải nghiệm người dùng theo persona thay vì tách thành nhiều deployment độc lập. UniHub dùng một ứng dụng web Next.js cho sinh viên và ban tổ chức, cùng một ứng dụng mobile Expo dành riêng cho nhân sự check-in.
+
+**Lý do:**
+- Giữ đúng Single Responsibility Principle ở cấp ứng dụng: sinh viên, admin và check-in staff có nhu cầu khác nhau rõ rệt
+- Tránh overhead vận hành của một admin frontend riêng
+- Giữ mobile app tập trung hoàn toàn vào check-in offline-first thay vì dàn trải thêm các tính năng sinh viên hoặc admin
+- Cho phép kiểm soát chặt chẽ type-safety và API contract giữa UI với backend
+
+**Đánh đổi:**
+- Student web và admin web dùng chung codebase nên cần tổ chức route, layout và component rõ ràng để tránh lẫn trách nhiệm
+- Chấp nhận được vì vẫn chỉ có một web deployment, phù hợp ràng buộc đồ án
+
+### 2. Kiến trúc Web Application (Next.js 14 App Router)
+
+**Mục tiêu người dùng:**
+- Sinh viên: xem workshop, đăng ký, theo dõi trạng thái thanh toán, nhận xác nhận
+- Ban tổ chức: dashboard, CRUD workshop, scheduling, audit logs, settings
+
+**Quyết định:**
+- Dùng React Server Components mặc định cho các trang đọc dữ liệu nhiều
+- Chỉ dùng `"use client"` ở các lá tương tác mạnh như form, modal, nút đăng ký, widget polling
+- Tất cả business mutation đi qua Express backend API, không phụ thuộc Next.js Server Actions cho các luồng nghiệp vụ chính
+
+**Tổ chức route:**
+- `(student)/...` cho luồng public và sinh viên
+- `admin/...` cho luồng nội bộ của organizer/admin
+
+**Lý do:**
+- Giảm JavaScript phía client cho các trang đọc nhiều
+- Giữ ranh giới rõ giữa tầng hiển thị và tầng nghiệp vụ
+- Dễ áp dụng RBAC trong layout và middleware
+
+### 3. Kiến trúc Mobile Application (React Native + Expo)
+
+**Mục tiêu người dùng:**
+- Chỉ dành cho check-in staff
+
+**Quyết định:**
+- Mobile app theo mô hình offline-first
+- Quét QR tương tác với `expo-sqlite` trước, không phụ thuộc kết nối mạng tại thời điểm scan
+- Đồng bộ theo cơ chế background hoặc manual sync khi có mạng trở lại
+- Dùng Expo Router để giữ navigation đơn giản và nhất quán
+
+**Lý do:**
+- Khu vực check-in có thể mạng yếu hoặc mất mạng
+- Event-day workflow cần phản hồi nhanh hơn là phụ thuộc round-trip đến server
+- SQLite phù hợp hơn key-value storage cho hàng đợi check-in
+
+### 4. Chiến lược truy xuất dữ liệu và type safety
+
+**Quyết định:**
+- UI không truy cập trực tiếp PostgreSQL; mọi dữ liệu đi qua backend API
+- Web dùng typed API client bọc quanh `fetch`
+- Public reads như workshop list có thể dùng caching/revalidation
+- User-specific và admin-sensitive data dùng dynamic fetching
+- Mobile sync dùng explicit sync action và retry, không dùng subscription real-time
+
+**Lý do:**
+- Giữ backend là source of truth
+- Tránh rò rỉ logic truy vấn vào frontend
+- Type contract rõ ràng giúp giảm lỗi khi thay đổi API
+
+**Ràng buộc kiểu dữ liệu:**
+- DTO và validation schema ở frontend phải mirror contract backend
+- `react-hook-form` + `zod` được dùng cho form state và validation
+
+### 5. Design System và ngôn ngữ thị giác
+
+**Quyết định:** Dùng chung triết lý component nhưng phân tách rõ visual language theo persona. Ba bề mặt `student web`, `admin web`, và `mobile check-in` không nên giống hệt nhau.
+
+#### A. Student Web
+
+- Hướng thị giác: sống động, thân thiện, khơi gợi khám phá
+- Dùng card phân lớp, gradient nhẹ, bề mặt kính mờ sáng để tạo cảm giác sự kiện
+- Trạng thái quan trọng cần nổi bật:
+  - số chỗ còn lại
+  - miễn phí hay có phí
+  - còn mở đăng ký hay đã đầy
+  - AI summary hoặc điểm nổi bật workshop
+
+#### B. Admin Web
+
+- Hướng thị giác: vận hành, rõ ràng, data-dense
+- Ưu tiên table, chart, filter, badge trạng thái, alert card
+- Trang admin cần ít trang trí hơn student portal; ưu tiên clarity hơn novelty
+- Trạng thái cần thể hiện rõ:
+  - loading
+  - stale data timestamp
+  - destructive action confirmation
+  - anomaly severity
+
+#### C. Mobile Check-in
+
+- Hướng thị giác: high-contrast, dark, action-oriented
+- Nền tối giúp đỡ mỏi mắt và tăng readability khi scan QR trong hội trường
+- Feedback phải nhận ra ngay:
+  - scan thành công
+  - QR không hợp lệ
+  - QR đã check-in
+  - scan offline đang chờ sync
+
+### 6. Cấu trúc component và thư mục frontend
+
+**Quyết định:** Tách rõ phần orchestration và phần presentation. Screen-level container hoặc server component lo fetch dữ liệu typed; component nhỏ hơn lo render và interaction.
+
+**Web**
+
+```text
+frontend/
+├── app/
+│   ├── (student)/
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   └── workshops/[id]/page.tsx
+│   └── admin/
+│       ├── layout.tsx
+│       ├── dashboard/page.tsx
+│       ├── workshops/page.tsx
+│       └── audit-logs/page.tsx
+├── components/
+│   ├── ui/           # component presentation-only
+│   ├── student/      # composite component cho sinh viên
+│   └── admin/        # composite component cho admin
+└── lib/
+    ├── api-client.ts
+    └── theme-utils.ts
+```
+
+**Mobile**
+
+```text
+mobile/
+├── app/
+│   ├── _layout.tsx
+│   ├── (auth)/index.tsx
+│   └── (checkin)/
+│       ├── scanner.tsx
+│       └── sync-queue.tsx
+├── components/
+│   ├── QROverlay.tsx
+│   └── StatusToast.tsx
+└── lib/
+    └── offline-store.ts
+```
+
+**Nguyên tắc:**
+- `ui/` chỉ nên chứa primitive hoặc component thiên về style và accessibility
+- Không đặt business logic nặng trong leaf UI component
+- Logic offline persistence phải nằm trong `lib/` thay vì screen component
+
+### 7. Quản lý state phía frontend
+
+**Quyết định:** Ưu tiên state pattern có sẵn của framework trước, tránh thêm global state library nếu chưa có nhu cầu rõ ràng.
+
+**Lý do:**
+- Giảm bundle size và giảm chi phí nhận thức khi phát triển
+- Phù hợp với RSC trên web và screen-scoped state trên mobile
+
+**Cách áp dụng:**
+- Web server state:
+  - React Server Components cho read-heavy data
+  - dynamic fetch cho dữ liệu authenticated hoặc admin-only
+- Web client state:
+  - `useState`, `useReducer`, `useContext`
+  - `react-hook-form` + `zod`
+- Mobile local state:
+  - state cấp màn hình cho camera, sync status, feedback
+  - `expo-sqlite` là source of truth cho pending offline check-ins
+
+### 8. ADR cho frontend
+
+### ADR-006: Styling Framework Across Web and Mobile
+
+**Quyết định:** Dùng Tailwind CSS cho web Next.js và NativeWind-compatible utility styling cho Expo mobile.
+
+**Lý do:**
+- Tăng tốc độ iteration
+- Giữ chung tư duy utility-first giữa web và mobile
+- Dễ trích xuất reusable UI primitives
+
+**Đánh đổi:**
+- JSX có thể verbose hơn
+- Giảm rủi ro bằng cách gom pattern lặp lại vào shared component và helper
+
+### ADR-007: Mobile Offline Storage Engine
+
+**Quyết định:** Dùng `expo-sqlite` thay vì `AsyncStorage`.
+
+**Lý do:**
+- Hàng đợi check-in cần query có cấu trúc, deduplication, và kiểm tra record pending
+- SQLite phù hợp hơn key-value storage cho bài toán này
+
+**Đánh đổi:**
+- Setup và quản lý schema cục bộ phức tạp hơn một chút
+- Chấp nhận vì độ bền của event-day workflow quan trọng hơn
+
+### ADR-008: Web Component Segregation
+
+**Quyết định:** Dùng server component như data-loading container và client component như presenter xử lý interaction khi phù hợp.
+
+**Lý do:**
+- Thỏa Single Responsibility ở cấp component
+- Giảm client bundle cho trang đọc nhiều
+- Giữ business mutation đi qua backend API nhưng vẫn có UI composition sạch
+
+**Đánh đổi:**
+- Cần cẩn thận với server/client boundary và serializable props
+- Chấp nhận vì lợi ích về hiệu năng và maintainability phù hợp với UniHub
+
+---
+
 ## Các quyết định kỹ thuật quan trọng (ADR)
 
 ### ADR-001: Monolith Modular vs Microservices

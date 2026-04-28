@@ -1,20 +1,212 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  ## Project
+  UniHub Workshop — a university workshop registration and check-in system.
+  Built for "Skills & Career Week": 5 days, 8–12 parallel workshops/day, ~12,000 students.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  ## Architecture
+  Modular monolith. Modules: auth, workshop, registration, payment, checkin,
+  notification, ai-summary, csv-import. All modules share one codebase and one
+  database. Modules communicate via service calls and Bull queues — never direct
+  cross-module DB access.
+
+  ## Tech Stack
+  - Backend: Node.js + Express.js (no NestJS), TypeScript (strict mode)
+  - Frontend: Next.js 14 (App Router) + Tailwind CSS + TypeScript — deployed on Vercel free tier
+  - Mobile: React Native + Expo (iOS & Android) + TypeScript — check-in staff only.
+    Sole purpose: scan student QR codes, record check-ins offline, sync when back online.
+    Students and organizers use the web app (frontend/) exclusively — no mobile features for them.
+  - Database: PostgreSQL via Supabase (free tier, connection pool via Supabase pooler)
+  - ORM/Query: node-postgres (pg) with raw SQL + typed query wrappers — no ORM
+  - Cache & Queue backend: Redis via Upstash (free tier, REST-compatible)
+  - Job queue: BullMQ backed by Upstash Redis
+  - File storage: Cloudflare R2 (free tier, S3-compatible)
+  - Email: Resend (free tier, 3,000 emails/month)
+  - AI: Google Gemini API (free tier, 60 RPM)
+  - Payments: VNPay (sandbox for development)
+  - Auth: JWT (access token 15 min) + refresh token (7 days, stored in Upstash Redis)
+  - Mobile local storage: expo-sqlite (SQLite) for offline check-in queue
+  - Cron: node-cron for scheduled CSV import (runs at 02:05 AM daily)
+  - Infra: single VPS (Oracle Cloud ARM free tier) + Docker Compose + Traefik (TLS)
+  - CI/CD: GitHub Actions → Docker build → SSH deploy
+
+  ## Key Infrastructure Notes
+  - Supabase: use the connection pooler endpoint (port 6543, pgBouncer mode) for
+    all app queries to stay within free-tier connection limits (max 60 direct conns).
+    Use direct connection (port 5432) only for migrations.
+  - Upstash Redis: HTTP/REST-based — use @upstash/redis client, not ioredis.
+    BullMQ requires a special adapter: @upstash/redis + bullmq's IORedis-compatible
+    shim. Rate limit counters and idempotency keys also stored here.
+  - All secrets in environment variables, never hardcoded. Use .env.example as template.
+
+  ## Key Technical Decisions
+  - Seat allocation: Redis DECRBY as fast pre-check, then PostgreSQL atomic UPDATE
+    (remaining_seats = remaining_seats - 1 WHERE remaining_seats > 0) as final commit.
+  - Double-charge prevention: idempotency_key (UUID v4) stored in both Upstash Redis
+    (TTL 24h, fast lookup) and PostgreSQL payments table (UNIQUE constraint, durable).
+  - Circuit Breaker for VNPay: 3 states (CLOSED/OPEN/HALF-OPEN), state stored in
+    Upstash Redis with TTL. Threshold: 5 failures in 30s → OPEN for 60s.
+  - Rate limiting: Token Bucket per user, implemented with Upstash Redis Lua script
+    (atomic). Capacity: 5 tokens, refill: 1/sec.
+  - Offline check-in: JWT-signed QR codes (verifiable without network). Pending
+    check-ins stored in SQLite, synced via POST /checkin/sync when back online.
+    Server uses INSERT ... ON CONFLICT DO NOTHING for idempotency.
+  - CSV import: staging table → validate → upsert to users → deactivate removed
+    students. Aborts if error rate > 10%. Runs in chunks of 500 rows.
+  - Notifications: async via BullMQ. Strategy pattern for channels (Email, InApp).
+    Telegram channel planned but not implemented yet — adding it must not touch
+    Registration or Workshop modules.
+  - Payment hold: paid workshops create registration with status pending_payment +
+    10-minute TTL. Background job releases seat if payment not completed in time.
+  - QR token: signed JWT containing {registration_id, workshop_id, user_id},
+    expires at workshop.ends_at + 1 hour.
+
+  ## Project Structure
+  Monorepo — three apps in one repository, no shared package workspace (keep it simple).
+  Each app has its own package.json and is deployed independently.
+
+  unihub/                          ← repo root
+  ├── backend/                     ← Express.js API server (TypeScript)
+  │   ├── src/
+  │   │   ├── modules/
+  │   │   │   ├── auth/
+  │   │   │   │   ├── auth.router.ts       (HTTP → service, no logic)
+  │   │   │   │   ├── auth.service.ts      (business logic only)
+  │   │   │   │   └── auth.types.ts        (request/response types)
+  │   │   │   ├── workshop/
+  │   │   │   │   ├── workshop.router.ts
+  │   │   │   │   ├── workshop.service.ts
+  │   │   │   │   └── workshop.types.ts
+  │   │   │   ├── registration/            (same pattern as above)
+  │   │   │   ├── payment/
+  │   │   │   │   ├── payment.router.ts
+  │   │   │   │   ├── payment.service.ts
+  │   │   │   │   ├── payment.types.ts
+  │   │   │   │   └── vnpay.adapter.ts     (wraps VNPay SDK behind IPaymentGateway)
+  │   │   │   ├── checkin/
+  │   │   │   ├── notification/
+  │   │   │   │   ├── notification.router.ts
+  │   │   │   │   ├── notification.service.ts   (depends on INotificationChannel[])
+  │   │   │   │   ├── notification.types.ts
+  │   │   │   │   └── channels/
+  │   │   │   │       ├── INotificationChannel.ts   (interface — OCP extension point)
+  │   │   │   │       ├── email.channel.ts
+  │   │   │   │       └── inapp.channel.ts
+  │   │   │   ├── ai-summary/
+  │   │   │   └── csv-import/
+  │   │   │       ├── csv-import.service.ts
+  │   │   │       └── csv-import.cron.ts
+  │   │   ├── shared/
+  │   │   │   ├── interfaces/
+  │   │   │   │   ├── IDatabase.ts         (ISP: narrow DB interfaces per consumer)
+  │   │   │   │   ├── ICache.ts
+  │   │   │   │   └── IQueue.ts
+  │   │   │   ├── middleware/
+  │   │   │   │   ├── authenticate.ts
+  │   │   │   │   ├── authorize.ts
+  │   │   │   │   └── rateLimiter.ts
+  │   │   │   ├── infra/
+  │   │   │   │   ├── redis.ts             (Upstash @upstash/redis, implements ICache)
+  │   │   │   │   ├── db.ts                (pg pool → Supabase pooler port 6543)
+  │   │   │   │   └── queue.ts             (BullMQ setup, implements IQueue)
+  │   │   │   └── errors/
+  │   │   │       └── AppError.ts          (typed error classes)
+  │   │   ├── workers/
+  │   │   │   ├── email.worker.ts          (consumes queue, delegates to NotificationService)
+  │   │   │   ├── ai-summary.worker.ts
+  │   │   │   └── notification.worker.ts
+  │   │   └── app.ts
+  │   ├── migrations/                      (raw .sql files, run via direct connection port 5432)
+  │   ├── tsconfig.json                    (strict: true, target: ES2022, module: NodeNext)
+  │   ├── .env.example
+  │   ├── Dockerfile
+  │   └── package.json
+  │
+  ├── frontend/                    ← Next.js 14 web app (students + admin), TypeScript
+  │   ├── app/
+  │   │   ├── (student)/           (workshop list, detail, my-registrations)
+  │   │   └── admin/               (dashboard, workshop CRUD, stats)
+  │   ├── components/
+  │   ├── lib/
+  │   │   ├── api.ts               (typed API client — mirrors backend response types)
+  │   │   └── auth.ts
+  │   ├── types/                   (shared response types, manually kept in sync with backend)
+  │   ├── tsconfig.json
+  │   ├── .env.example
+  │   └── package.json
+  │
+  ├── mobile/                      ← React Native + Expo, TypeScript
+  │   │                              Check-in staff ONLY. No student or admin features.
+  │   ├── app/                     (Expo Router)
+  │   │   ├── (auth)/              (login screen — checkin_staff role only)
+  │   │   └── (checkin)/           (scanner, result, sync-status screens)
+  │   ├── lib/
+  │   │   ├── db.ts                (expo-sqlite — stores pending check-ins offline)
+  │   │   ├── qr.ts                (verify JWT signature locally, no network needed)
+  │   │   └── sync.ts              (POST /checkin/sync when network restored)
+  │   ├── tsconfig.json
+  │   ├── .env.example
+  │   └── package.json
+  │
+  ├── docker-compose.yml           ← backend + traefik only
+  ├── .github/
+  │   └── workflows/
+  │       ├── deploy-backend.yml   (push to main → build → SSH to VPS)
+  │       └── deploy-frontend.yml  (push to main → Vercel auto-deploy)
+  └── README.md
+
+  ## Constraints
+  - TypeScript strict mode enabled across all three apps (backend, frontend, mobile).
+    No implicit any. All function parameters and return types must be explicitly typed.
+  - No NestJS — Express only, 3-week deadline.
+  - No Kubernetes, no multi-region, no managed load balancer.
+  - Supabase free tier: 500MB DB storage, 2GB bandwidth, 60 pooled connections.
+  - Upstash free tier: 10,000 commands/day — design Redis usage to stay within this.
+    Avoid chatty patterns; batch reads where possible.
+
+  ## SOLID Principles — How They Apply Here
+  - Single Responsibility: each module folder owns exactly one domain (e.g. registration/).
+    A router file only wires HTTP → service. A service file only contains business logic.
+    Workers only consume queue jobs — no business logic inside workers, they delegate to services.
+  - Open/Closed: NotificationService resolves channels via a registry. Adding TelegramChannel
+    means creating a new class that implements INotificationChannel — zero changes to
+    NotificationService or any other module.
+  - Liskov Substitution: all NotificationChannel implementations must honour the INotificationChannel
+    contract (send() never throws for expected errors, always returns a result object).
+  - Interface Segregation: define narrow interfaces per consumer. E.g. IWorkshopReader (read-only
+    queries) vs IWorkshopWriter (mutations) — checkin module only depends on IWorkshopReader.
+  - Dependency Inversion: services receive dependencies (db, redis, queue) via constructor
+    injection, never import singletons directly. This makes unit testing possible without
+    mocking module-level imports.
+
+rules:
+  proposal:
+    - State the problem in one sentence before elaborating
+    - Always include a "Out of Scope" section to prevent scope creep
+    - Quantify success criteria where possible (e.g. "< 2s response time")
+    - Flag any decision that increases monthly infrastructure cost
+
+  design:
+    - Include a sequence diagram for every flow that crosses more than two components
+    - Every ADR must follow the format: Decision / Reason / Trade-off
+    - Always specify which Supabase connection endpoint to use (pooler vs direct)
+    - Always specify Upstash command count impact for new Redis usage patterns
+    - Do not propose solutions that require a new paid service or new Docker container
+    - When designing a queue job, explicitly state: trigger event, consumer, retry policy
+    - For every new interface introduced, name which SOLID principle it satisfies and why
+
+  specs:
+    - Use Given/When/Then format for all acceptance criteria
+    - Every error scenario must specify the HTTP status code and response body shape
+    - Explicitly state whether the operation is idempotent and how
+    - Call out any behaviour that differs between online and offline modes
+    - Reference the relevant ADR if the spec depends on a key technical decision
+
+  tasks:
+    - Break tasks into chunks completable in under 2 hours
+    - Each task must reference its parent spec or design section
+    - Database migration tasks must always come before the service tasks that use them
+    - Include a manual smoke-test step at the end of each feature group
+    - TypeScript tasks must include defining types/interfaces before implementing the service
+    - Flag any task where the implementation would violate SRP (doing more than one thing)

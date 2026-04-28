@@ -6,7 +6,7 @@ Ban tổ chức upload file PDF mô tả workshop. Hệ thống tự động ext
 
 ---
 
-## Luồng xử lý
+## Luồng chính
 
 ```
 [Admin Web]              [Backend API]         [R2 Storage]    [BullMQ]    [Gemini API]

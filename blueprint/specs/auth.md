@@ -6,7 +6,7 @@ Hệ thống xác thực người dùng và kiểm soát quyền truy cập theo
 
 ---
 
-## Luồng xác thực
+## Luồng chính
 
 ### Login
 
@@ -182,7 +182,7 @@ export function middleware(request: NextRequest) {
 
 ---
 
-## Kịch bản đặc biệt
+## Kịch bản lỗi
 
 ### Sinh viên lần đầu đăng nhập (password mặc định)
 
@@ -206,7 +206,7 @@ export function middleware(request: NextRequest) {
 
 ---
 
-## Ràng buộc bảo mật
+## Ràng buộc
 
 - Password hash: bcrypt với cost factor 12
 - JWT secret: min 256-bit, lưu trong environment variable
