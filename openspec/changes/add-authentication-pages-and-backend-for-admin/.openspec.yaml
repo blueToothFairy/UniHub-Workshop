@@ -1,0 +1,4 @@
+change_id: add-authentication-pages-and-backend-for-admin
+title: Add authentication guards and backend authorization for admin
+status: implemented
+owner: codex
