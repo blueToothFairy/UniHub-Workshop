@@ -2,7 +2,15 @@ import { randomUUID } from "node:crypto";
 import type { IQueue } from "../../shared/interfaces/IQueue.js";
 import type { IDatabase } from "../../shared/interfaces/IDatabase.js";
 import { AppError } from "../../shared/errors/AppError.js";
-import type { AuditLog, CreateWorkshopInput, DashboardStats, UpdateWorkshopInput, Workshop } from "./admin.types.js";
+import type {
+  AuditLog,
+  CreateWorkshopInput,
+  DashboardStats,
+  OverrideSummaryInput,
+  UpdateWorkshopInput,
+  Workshop
+} from "./admin.types.js";
+import type { AiSummaryService } from "../ai-summary/ai-summary.service.js";
 
 interface WorkshopRow {
   id: string;
@@ -17,6 +25,11 @@ interface WorkshopRow {
   price_vnd: number;
   payment_required: boolean;
   status: "draft" | "published" | "cancelled";
+  pdf_url: string | null;
+  ai_summary: string | null;
+  summary_status: "idle" | "processing" | "ready" | "fallback" | "failed";
+  summary_generated_at: Date | null;
+  summary_error_code: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -46,6 +59,11 @@ function toWorkshop(row: WorkshopRow): Workshop {
     priceVnd: row.price_vnd,
     paymentRequired: row.payment_required,
     status: row.status,
+    pdfUrl: row.pdf_url,
+    aiSummary: row.ai_summary,
+    summaryStatus: row.summary_status,
+    summaryGeneratedAt: row.summary_generated_at ? row.summary_generated_at.toISOString() : null,
+    summaryErrorCode: row.summary_error_code,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString()
   };
@@ -54,12 +72,17 @@ function toWorkshop(row: WorkshopRow): Workshop {
 export class AdminService {
   public constructor(
     private readonly queue: IQueue,
-    private readonly database: IDatabase
+    private readonly database: IDatabase,
+    private readonly aiSummaryService: AiSummaryService
   ) {}
 
   public async listWorkshops(): Promise<Workshop[]> {
     const result = await this.database.query<WorkshopRow>("SELECT * FROM workshops ORDER BY starts_at DESC");
     return result.rows.map(toWorkshop);
+  }
+
+  public async getWorkshopDetail(id: string): Promise<Workshop> {
+    return this.getWorkshopOrThrow(id);
   }
 
   public async createWorkshop(input: CreateWorkshopInput, actorUserId: string): Promise<Workshop> {
@@ -74,8 +97,10 @@ export class AdminService {
     const created = await this.database.query<WorkshopRow>(
       `INSERT INTO workshops (
         id, title, description, speaker_name, room, starts_at, ends_at,
-        capacity, confirmed_registrations, price_vnd, payment_required, status, created_at, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,$11,$12,$13)
+        capacity, confirmed_registrations, price_vnd, payment_required, status,
+        pdf_url, ai_summary, summary_status, summary_generated_at, summary_error_code,
+        created_at, updated_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,$11,NULL,NULL,'idle',NULL,NULL,$12,$13)
       RETURNING *`,
       [
         id,
@@ -169,6 +194,14 @@ export class AdminService {
     await this.insertAudit("workshop.cancel", actorUserId, id, current, workshop);
     void this.queue.enqueueWorkshopChanged(id, "cancelled");
     return workshop;
+  }
+
+  public async uploadWorkshopPdf(workshopId: string, fileName: string, contentType: string, bytes: Buffer): Promise<{ status: "processing"; workshop_id: string }> {
+    return this.aiSummaryService.uploadWorkshopPdf({ workshopId, fileName, contentType, bytes });
+  }
+
+  public async overrideWorkshopSummary(workshopId: string, input: OverrideSummaryInput): Promise<void> {
+    await this.aiSummaryService.overrideWorkshopSummary(workshopId, input.summary);
   }
 
   public async getDashboardStats(): Promise<DashboardStats> {
@@ -276,5 +309,3 @@ export class AdminService {
     );
   }
 }
-
-

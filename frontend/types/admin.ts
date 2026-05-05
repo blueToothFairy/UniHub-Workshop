@@ -1,4 +1,5 @@
-﻿export type WorkshopStatus = "draft" | "published" | "cancelled";
+export type WorkshopStatus = "draft" | "published" | "cancelled";
+export type SummaryStatus = "idle" | "processing" | "ready" | "fallback" | "failed";
 
 export interface Workshop {
   id: string;
@@ -13,8 +14,18 @@ export interface Workshop {
   priceVnd: number;
   paymentRequired: boolean;
   status: WorkshopStatus;
+  pdfUrl: string | null;
+  aiSummary: string | null;
+  summaryStatus: SummaryStatus;
+  summaryGeneratedAt: string | null;
+  summaryErrorCode: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UploadWorkshopPdfResponse {
+  status: "processing";
+  workshop_id: string;
 }
 
 export interface AuditLog {

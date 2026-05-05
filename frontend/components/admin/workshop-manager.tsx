@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState, type FormEvent, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,8 @@ export default function WorkshopManager({ token, workshops }: Props): ReactEleme
   const router = useRouter();
   const [form, setForm] = useState<CreateWorkshopInput>(emptyForm);
   const [selectedId, setSelectedId] = useState<string>("");
+  const [summaryOverride, setSummaryOverride] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string>("");
 
   const selected: Workshop | undefined = useMemo(
@@ -46,9 +48,7 @@ export default function WorkshopManager({ token, workshops }: Props): ReactEleme
   };
 
   const onUpdate = async (): Promise<void> => {
-    if (!selected) {
-      return;
-    }
+    if (!selected) return;
     setError("");
     try {
       await adminApi.updateWorkshop(token, selected.id, {
@@ -69,15 +69,37 @@ export default function WorkshopManager({ token, workshops }: Props): ReactEleme
   };
 
   const onCancel = async (): Promise<void> => {
-    if (!selected) {
-      return;
-    }
+    if (!selected) return;
     setError("");
     try {
       await adminApi.cancelWorkshop(token, selected.id);
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Cancel failed");
+    }
+  };
+
+  const onUploadPdf = async (): Promise<void> => {
+    if (!selected || !selectedFile) return;
+    setError("");
+    try {
+      await adminApi.uploadWorkshopPdf(token, selected.id, selectedFile);
+      setSelectedFile(null);
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "PDF upload failed");
+    }
+  };
+
+  const onOverrideSummary = async (): Promise<void> => {
+    if (!selected) return;
+    setError("");
+    try {
+      await adminApi.overrideSummary(token, selected.id, summaryOverride);
+      setSummaryOverride("");
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Override failed");
     }
   };
 
@@ -98,14 +120,7 @@ export default function WorkshopManager({ token, workshops }: Props): ReactEleme
           <option value="published">published</option>
           <option value="cancelled">cancelled</option>
         </select>
-        <textarea
-          className="textarea"
-          placeholder="Description"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          style={{ gridColumn: "1 / -1" }}
-          required
-        />
+        <textarea className="textarea" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} style={{ gridColumn: "1 / -1" }} required />
         <button className="btn btn-primary" type="submit" style={{ gridColumn: "1 / -1" }}>Create workshop</button>
       </form>
 
@@ -119,13 +134,29 @@ export default function WorkshopManager({ token, workshops }: Props): ReactEleme
       {selected ? (
         <div className="grid">
           <p>Selected: {selected.title} ({selected.status})</p>
+          <p>Summary status: {selected.summaryStatus}</p>
+          {selected.aiSummary ? <p>{selected.aiSummary}</p> : null}
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-secondary" type="button" onClick={onUpdate}>Save selected workshop</button>
             <button className="btn" style={{ background: "#fee2e2", color: "#991b1b" }} type="button" onClick={onCancel}>Cancel selected workshop</button>
           </div>
+
+          <div className="grid" style={{ gridTemplateColumns: "1fr auto" }}>
+            <input className="input" type="file" accept="application/pdf" onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)} />
+            <button className="btn btn-secondary" type="button" onClick={onUploadPdf} disabled={!selectedFile}>Upload PDF</button>
+          </div>
+
+          <textarea
+            className="textarea"
+            placeholder="Manual summary override"
+            value={summaryOverride}
+            onChange={(e) => setSummaryOverride(e.target.value)}
+          />
+          <button className="btn btn-secondary" type="button" onClick={onOverrideSummary} disabled={!summaryOverride.trim()}>
+            Override Summary
+          </button>
         </div>
       ) : null}
     </section>
   );
 }
-

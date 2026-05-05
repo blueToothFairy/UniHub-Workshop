@@ -1,8 +1,9 @@
-﻿import type {
+import type {
   AuditLog,
   CreateWorkshopInput,
   DashboardStats,
   UpdateWorkshopInput,
+  UploadWorkshopPdfResponse,
   Workshop
 } from "@/types/admin";
 
@@ -24,43 +25,28 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 function readCookie(name: string): string {
-  if (typeof document === "undefined") {
-    return "";
-  }
-
+  if (typeof document === "undefined") return "";
   const parts: string[] = document.cookie.split(";").map((item) => item.trim());
   for (const part of parts) {
-    if (!part) {
-      continue;
-    }
-    const index: number = part.indexOf("=");
-    if (index === -1) {
-      continue;
-    }
-    const key: string = part.slice(0, index);
-    if (key === name) {
-      return decodeURIComponent(part.slice(index + 1));
-    }
+    const index = part.indexOf("=");
+    if (index === -1) continue;
+    if (part.slice(0, index) === name) return decodeURIComponent(part.slice(index + 1));
   }
-
   return "";
 }
 
 function clearAuthCookies(): void {
-  if (typeof document === "undefined") {
-    return;
-  }
+  if (typeof document === "undefined") return;
   document.cookie = "access_token=; path=/; max-age=0; samesite=lax";
   document.cookie = "refresh_token=; path=/; max-age=0; samesite=lax";
 }
 
 async function attemptRefresh(): Promise<string | null> {
-  // single-flight: ensure only one refresh runs at a time across concurrent calls
-  if ((attemptRefresh as any)._inFlight) {
-    return (attemptRefresh as any)._inFlight as Promise<string | null>;
+  if ((attemptRefresh as unknown as { _inFlight?: Promise<string | null> })._inFlight) {
+    return (attemptRefresh as unknown as { _inFlight: Promise<string | null> })._inFlight;
   }
 
-  (attemptRefresh as any)._inFlight = (async () => {
+  (attemptRefresh as unknown as { _inFlight: Promise<string | null> })._inFlight = (async () => {
     try {
       const refreshToken: string = readCookie("refresh_token");
       if (!refreshToken) {
@@ -74,18 +60,18 @@ async function attemptRefresh(): Promise<string | null> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken })
       });
+
       if (!res.ok) {
-        // clear cookies on failure so subsequent requests fail fast
         clearAuthCookies();
         return null;
       }
 
       const body: unknown = await res.json().catch(() => ({}));
-      const access = (body as any).access_token as string | undefined;
-      const refresh = (body as any).refresh_token as string | undefined;
+      const access = (body as { access_token?: string }).access_token;
+      const refresh = (body as { refresh_token?: string }).refresh_token;
       if (!access) return null;
+
       if (typeof document !== "undefined") {
-        // update cookies
         document.cookie = `access_token=${encodeURIComponent(access)}; path=/; max-age=${ACCESS_TOKEN_TTL_SECONDS}; samesite=lax`;
         if (refresh) {
           document.cookie = `refresh_token=${encodeURIComponent(refresh)}; path=/; max-age=${REFRESH_TOKEN_TTL_SECONDS}; samesite=lax`;
@@ -96,102 +82,105 @@ async function attemptRefresh(): Promise<string | null> {
       clearAuthCookies();
       return null;
     } finally {
-      // clear in-flight marker
-      delete (attemptRefresh as any)._inFlight;
+      delete (attemptRefresh as unknown as { _inFlight?: Promise<string | null> })._inFlight;
     }
   })();
 
-  return (attemptRefresh as any)._inFlight as Promise<string | null>;
+  return (attemptRefresh as unknown as { _inFlight: Promise<string | null> })._inFlight;
+}
+
+async function withRefreshRetry<T>(request: () => Promise<Response>): Promise<T> {
+  const response = await request();
+  if (response.ok) return parseResponse<T>(response);
+
+  const body = (await response.json().catch(() => ({}))) as { error?: { code?: string; message?: string } };
+  if (body.error?.code === "TOKEN_EXPIRED") {
+    const newToken = await attemptRefresh();
+    if (!newToken) throw new Error(`${body.error.code}: ${body.error.message ?? "Token expired"}`);
+    return withRefreshRetry<T>(request);
+  }
+
+  throw new Error(`${body.error?.code ?? "API_ERROR"}: ${body.error?.message ?? "Request failed"}`);
 }
 
 export async function apiGet<T>(path: string, token: string): Promise<T> {
-  const response: Response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-    credentials: "include"
-  });
-
-  if (response.ok) return parseResponse<T>(response);
-
-  // try refresh on token expiry and retry once
-  const body = await response.json().catch(() => ({}));
-  if ((body as any).error?.code === "TOKEN_EXPIRED") {
-    const newToken = await attemptRefresh();
-    if (!newToken) throw new Error(`${(body as any).error.code}: ${(body as any).error.message}`);
-    const retry = await fetch(`${API_BASE_URL}${path}`, {
-      headers: { Authorization: `Bearer ${newToken}` },
+  return withRefreshRetry<T>(() =>
+    fetch(`${API_BASE_URL}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
       credentials: "include"
-    });
-    return parseResponse<T>(retry);
-  }
-
-  throw new Error(`${(body as any).error?.code ?? "API_ERROR"}: ${(body as any).error?.message ?? "Request failed"}`);
+    })
+  );
 }
 
 export async function apiPost<T>(path: string, token: string, payload: unknown): Promise<T> {
-  const response: Response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    cache: "no-store",
-    credentials: "include"
-  });
-
-  if (response.ok) return parseResponse<T>(response);
-
-  const body = await response.json().catch(() => ({}));
-  if ((body as any).error?.code === "TOKEN_EXPIRED") {
-    const newToken = await attemptRefresh();
-    if (!newToken) throw new Error(`${(body as any).error.code}: ${(body as any).error.message}`);
-    const retry = await fetch(`${API_BASE_URL}${path}`, {
+  return withRefreshRetry<T>(() =>
+    fetch(`${API_BASE_URL}${path}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${newToken}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       cache: "no-store",
       credentials: "include"
-    });
-    return parseResponse<T>(retry);
-  }
+    })
+  );
+}
 
-  throw new Error(`${(body as any).error?.code ?? "API_ERROR"}: ${(body as any).error?.message ?? "Request failed"}`);
+export async function apiPostMultipart<T>(path: string, token: string, formData: FormData): Promise<T> {
+  return withRefreshRetry<T>(() =>
+    fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+      cache: "no-store",
+      credentials: "include"
+    })
+  );
 }
 
 export async function apiPut<T>(path: string, token: string, payload: unknown): Promise<T> {
-  const response: Response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "PUT",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-    cache: "no-store",
-    credentials: "include"
-  });
-
-  if (response.ok) return parseResponse<T>(response);
-
-  const body = await response.json().catch(() => ({}));
-  if ((body as any).error?.code === "TOKEN_EXPIRED") {
-    const newToken = await attemptRefresh();
-    if (!newToken) throw new Error(`${(body as any).error.code}: ${(body as any).error.message}`);
-    const retry = await fetch(`${API_BASE_URL}${path}`, {
+  return withRefreshRetry<T>(() =>
+    fetch(`${API_BASE_URL}${path}`, {
       method: "PUT",
-      headers: { Authorization: `Bearer ${newToken}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       cache: "no-store",
       credentials: "include"
-    });
-    return parseResponse<T>(retry);
-  }
+    })
+  );
+}
 
-  throw new Error(`${(body as any).error?.code ?? "API_ERROR"}: ${(body as any).error?.message ?? "Request failed"}`);
+export async function apiPutNoContent(path: string, token: string, payload: unknown): Promise<void> {
+  await withRefreshRetry<unknown>(() =>
+    fetch(`${API_BASE_URL}${path}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+      credentials: "include"
+    })
+  );
 }
 
 export const adminApi = {
   getStats: (token: string): Promise<DashboardStats> => apiGet<DashboardStats>("/admin/dashboard/stats", token),
   getWorkshops: (token: string): Promise<Workshop[]> => apiGet<Workshop[]>("/admin/workshops", token),
+  getWorkshop: (token: string, id: string): Promise<Workshop> => apiGet<Workshop>(`/admin/workshops/${id}`, token),
   getAuditLogs: (token: string): Promise<AuditLog[]> => apiGet<AuditLog[]>("/admin/audit-logs", token),
   createWorkshop: (token: string, payload: CreateWorkshopInput): Promise<Workshop> =>
     apiPost<Workshop>("/admin/workshops", token, payload),
   updateWorkshop: (token: string, id: string, payload: UpdateWorkshopInput): Promise<Workshop> =>
     apiPut<Workshop>(`/admin/workshops/${id}`, token, payload),
-  cancelWorkshop: (token: string, id: string): Promise<Workshop> => apiPost<Workshop>(`/admin/workshops/${id}/cancel`, token, {})
+  cancelWorkshop: (token: string, id: string): Promise<Workshop> => apiPost<Workshop>(`/admin/workshops/${id}/cancel`, token, {}),
+  uploadWorkshopPdf: (token: string, id: string, file: File): Promise<UploadWorkshopPdfResponse> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiPostMultipart<UploadWorkshopPdfResponse>(`/admin/workshops/${id}/pdf`, token, formData);
+  },
+  overrideSummary: (token: string, id: string, summary: string): Promise<void> =>
+    apiPutNoContent(`/admin/workshops/${id}/summary`, token, { summary })
 };
+
+export async function getWorkshopPublic(id: string): Promise<Workshop> {
+  const response = await fetch(`${API_BASE_URL}/workshops/${id}`, { cache: "no-store" });
+  return parseResponse<Workshop>(response);
+}

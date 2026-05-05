@@ -24,6 +24,7 @@ export default async function AdminWorkshopsPage(): Promise<ReactElement> {
               <th align="left">Time</th>
               <th align="left">Status</th>
               <th align="left">Seats</th>
+              <th align="left">Summary</th>
             </tr>
           </thead>
           <tbody>
@@ -34,6 +35,7 @@ export default async function AdminWorkshopsPage(): Promise<ReactElement> {
                 <td>{new Date(workshop.startsAt).toLocaleString("vi-VN")}</td>
                 <td>{workshop.status}</td>
                 <td>{workshop.confirmedRegistrations}/{workshop.capacity}</td>
+                <td>{workshop.summaryStatus}</td>
               </tr>
             ))}
           </tbody>
@@ -42,4 +44,3 @@ export default async function AdminWorkshopsPage(): Promise<ReactElement> {
     </section>
   );
 }
-
