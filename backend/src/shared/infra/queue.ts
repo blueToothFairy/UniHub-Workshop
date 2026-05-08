@@ -32,6 +32,10 @@ export class BullMqQueue implements IQueue {
     await this.aiSummaryQueue.add(`summary:${payload.workshopId}:${payload.traceId}`, payload, options);
   }
 
+  public async enqueueRegistrationConfirmed(_payload: { registrationId: string; workshopId: string; userId: string; confirmedAt: string }): Promise<void> {
+    return Promise.resolve();
+  }
+
   public startAiSummaryWorker(handler: AiSummaryHandler): void {
     this.worker = new Worker<AiSummaryJobPayload>(
       AI_SUMMARY_QUEUE_NAME,
@@ -64,5 +68,9 @@ export class QueueStub implements IQueue {
     if (this.aiSummaryHandler) {
       await this.aiSummaryHandler(payload);
     }
+  }
+
+  public async enqueueRegistrationConfirmed(_payload: { registrationId: string; workshopId: string; userId: string; confirmedAt: string }): Promise<void> {
+    return Promise.resolve();
   }
 }

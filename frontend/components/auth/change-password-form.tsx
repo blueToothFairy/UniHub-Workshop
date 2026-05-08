@@ -30,8 +30,8 @@ export default function ChangePasswordForm(): ReactElement {
   };
 
   return (
-    <form onSubmit={onSubmit} className="card grid" style={{ maxWidth: 520, margin: "0 auto" }}>
-      <h1 style={{ marginBottom: 0 }}>Change password</h1>
+    <form onSubmit={onSubmit} className="card grid auth-shell">
+      <h1 className="auth-title">Change password</h1>
       {error ? <p style={{ color: "var(--color-danger)" }}>{error}</p> : null}
       <input className="input" type="password" placeholder="Old password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} required />
       <input className="input" type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} />

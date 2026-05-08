@@ -22,6 +22,8 @@ interface WorkshopRow {
   ends_at: Date;
   capacity: number;
   confirmed_registrations: number;
+  reserved_count: number;
+  confirmed_count: number;
   price_vnd: number;
   payment_required: boolean;
   status: "draft" | "published" | "cancelled";
@@ -46,6 +48,8 @@ interface AuditLogRow {
 }
 
 function toWorkshop(row: WorkshopRow): Workshop {
+  const confirmedCount = row.confirmed_count ?? row.confirmed_registrations ?? 0;
+  const reservedCount = row.reserved_count ?? confirmedCount;
   return {
     id: row.id,
     title: row.title,
@@ -56,6 +60,9 @@ function toWorkshop(row: WorkshopRow): Workshop {
     endsAt: row.ends_at.toISOString(),
     capacity: row.capacity,
     confirmedRegistrations: row.confirmed_registrations,
+    reservedCount,
+    confirmedCount,
+    availableSeats: Math.max(0, row.capacity - reservedCount),
     priceVnd: row.price_vnd,
     paymentRequired: row.payment_required,
     status: row.status,
@@ -97,10 +104,10 @@ export class AdminService {
     const created = await this.database.query<WorkshopRow>(
       `INSERT INTO workshops (
         id, title, description, speaker_name, room, starts_at, ends_at,
-        capacity, confirmed_registrations, price_vnd, payment_required, status,
+        capacity, confirmed_registrations, reserved_count, confirmed_count, price_vnd, payment_required, status,
         pdf_url, ai_summary, summary_status, summary_generated_at, summary_error_code,
         created_at, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,$9,$10,$11,NULL,NULL,'idle',NULL,NULL,$12,$13)
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,0,0,0,$9,$10,$11,NULL,NULL,'idle',NULL,NULL,$12,$13)
       RETURNING *`,
       [
         id,
@@ -213,7 +220,7 @@ export class AdminService {
       cancelled_workshops: string;
     }>(`SELECT
         COUNT(*)::text AS total_workshops,
-        COALESCE(SUM(confirmed_registrations),0)::text AS total_registrations,
+        COALESCE(SUM(confirmed_count),0)::text AS total_registrations,
         COALESCE(SUM(CASE WHEN payment_required THEN 1 ELSE 0 END),0)::text AS paid_workshops,
         COALESCE(SUM(CASE WHEN NOT payment_required THEN 1 ELSE 0 END),0)::text AS free_workshops,
         COALESCE(SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END),0)::text AS cancelled_workshops

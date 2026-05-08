@@ -33,12 +33,12 @@ export default function DashboardStatsPanel({ token, initialStats }: Props): Rea
       <p className="muted">Last updated: {new Date(stats.lastUpdatedAt).toLocaleString("vi-VN")}</p>
       {isStale ? <p style={{ color: "#b45309" }}>Data is stale. Auto-refresh will retry.</p> : null}
       <div className="stat-grid">
-        <article className="card"><p className="muted">Total workshops</p><h3>{stats.totalWorkshops}</h3></article>
-        <article className="card"><p className="muted">Total registrations</p><h3>{stats.totalRegistrations}</h3></article>
-        <article className="card"><p className="muted">Paid workshops</p><h3>{stats.paidWorkshops}</h3></article>
-        <article className="card"><p className="muted">Free workshops</p><h3>{stats.freeWorkshops}</h3></article>
-        <article className="card"><p className="muted">Cancelled workshops</p><h3>{stats.cancelledWorkshops}</h3></article>
-        <article className="card"><p className="muted">Check-ins</p><h3>{stats.checkins}</h3></article>
+        <article className="card"><p className="muted">Total workshops</p><p className="stat-metric">{stats.totalWorkshops}</p></article>
+        <article className="card"><p className="muted">Total registrations</p><p className="stat-metric">{stats.totalRegistrations}</p></article>
+        <article className="card"><p className="muted">Paid workshops</p><p className="stat-metric">{stats.paidWorkshops}</p></article>
+        <article className="card"><p className="muted">Free workshops</p><p className="stat-metric">{stats.freeWorkshops}</p></article>
+        <article className="card"><p className="muted">Cancelled workshops</p><p className="stat-metric">{stats.cancelledWorkshops}</p></article>
+        <article className="card"><p className="muted">Check-ins</p><p className="stat-metric">{stats.checkins}</p></article>
       </div>
     </section>
   );

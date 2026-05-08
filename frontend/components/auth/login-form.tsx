@@ -44,8 +44,8 @@ export default function LoginForm(): ReactElement {
   };
 
   return (
-    <form onSubmit={onSubmit} className="card grid" style={{ maxWidth: 460, margin: "0 auto" }}>
-      <h1 style={{ marginBottom: 0 }}>Login</h1>
+    <form onSubmit={onSubmit} className="card grid auth-shell">
+      <h1 className="auth-title">Login</h1>
       {error ? <p style={{ color: "var(--color-danger)" }}>{error}</p> : null}
       <input className="input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
       <input className="input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />

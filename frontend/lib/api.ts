@@ -15,6 +15,49 @@ interface ApiErrorBody {
   error: { code: string; message: string };
 }
 
+export interface CreateRegistrationResultFree {
+  registration_id: string;
+  registration_status: "confirmed";
+  payment_required: false;
+  qr_available: true;
+}
+
+export interface CreateRegistrationResultPaid {
+  registration_id: string;
+  registration_status: "pending_payment";
+  payment_required: true;
+  payment_id: string;
+  payment_status: "pending_provider" | "unknown";
+  payment_url: string | null;
+  next_action: "redirect_to_payment";
+}
+
+export type CreateRegistrationResult = CreateRegistrationResultFree | CreateRegistrationResultPaid;
+
+export interface RegistrationPaymentStatus {
+  registration_id: string;
+  registration_status: "pending_payment" | "confirmed" | "expired" | "cancelled";
+  payment_status: "pending_provider" | "unknown" | "completed" | "expired" | "failed" | "requires_review";
+  payment_url?: string | null;
+  next_action?: "redirect_to_payment" | "wait_for_confirmation" | "register_again" | "contact_support";
+  qr_available?: true;
+}
+
+export interface RegistrationQrData {
+  registration_id: string;
+  qr_token: string;
+  qr_issued_at: string;
+}
+
+export interface CurrentRegistrationData {
+  registration_id: string;
+  workshop_id: string;
+  registration_status: "pending_payment" | "confirmed";
+  payment_status: "pending_provider" | "unknown" | "completed";
+  payment_url: string | null;
+  qr_available: boolean;
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const body: unknown = await response.json();
   if (!response.ok) {
@@ -125,6 +168,18 @@ export async function apiPost<T>(path: string, token: string, payload: unknown):
   );
 }
 
+export async function apiPostWithHeaders<T>(path: string, token: string, payload: unknown, headers: Record<string, string>): Promise<T> {
+  return withRefreshRetry<T>(() =>
+    fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...headers },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+      credentials: "include"
+    })
+  );
+}
+
 export async function apiPostMultipart<T>(path: string, token: string, formData: FormData): Promise<T> {
   return withRefreshRetry<T>(() =>
     fetch(`${API_BASE_URL}${path}`, {
@@ -180,7 +235,28 @@ export const adminApi = {
     apiPutNoContent(`/admin/workshops/${id}/summary`, token, { summary })
 };
 
+export const registrationApi = {
+  createRegistration: (token: string, workshopId: string, idempotencyKey: string): Promise<CreateRegistrationResult> =>
+    apiPostWithHeaders<CreateRegistrationResult>("/registrations", token, { workshop_id: workshopId }, { "Idempotency-Key": idempotencyKey }),
+  getPaymentStatus: (token: string, registrationId: string): Promise<RegistrationPaymentStatus> =>
+    apiGet<RegistrationPaymentStatus>(`/registrations/${registrationId}/payment-status`, token),
+  getRegistrationQr: (token: string, registrationId: string): Promise<RegistrationQrData> =>
+    apiGet<RegistrationQrData>(`/registrations/${registrationId}/qr`, token),
+  getCurrentRegistrationByWorkshop: (token: string, workshopId: string): Promise<CurrentRegistrationData> =>
+    apiGet<CurrentRegistrationData>(`/registrations/workshops/${workshopId}/current`, token)
+};
+
 export async function getWorkshopPublic(id: string): Promise<Workshop> {
   const response = await fetch(`${API_BASE_URL}/workshops/${id}`, { cache: "no-store" });
   return parseResponse<Workshop>(response);
+}
+
+export interface WorkshopsThisMonthResponse {
+  stats: { workshopsThisMonth: number; registrationsThisMonth: number };
+  workshops: Workshop[];
+}
+
+export async function getWorkshopsThisMonth(): Promise<WorkshopsThisMonthResponse> {
+  const response = await fetch(`${API_BASE_URL}/workshops`, { cache: "no-store" });
+  return parseResponse<WorkshopsThisMonthResponse>(response);
 }

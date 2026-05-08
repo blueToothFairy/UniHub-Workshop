@@ -15,16 +15,16 @@ export default async function AdminWorkshopsPage(): Promise<ReactElement> {
     <section className="grid">
       <h1>Workshops</h1>
       <WorkshopManager token={token} workshops={workshops} />
-      <div className="card" style={{ overflowX: "auto" }}>
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+      <div className="card table-wrap">
+        <table className="data-table">
           <thead>
             <tr>
-              <th align="left">Title</th>
-              <th align="left">Room</th>
-              <th align="left">Time</th>
-              <th align="left">Status</th>
-              <th align="left">Seats</th>
-              <th align="left">Summary</th>
+              <th>Title</th>
+              <th>Room</th>
+              <th>Time</th>
+              <th>Status</th>
+              <th>Seats</th>
+              <th>Summary</th>
             </tr>
           </thead>
           <tbody>

@@ -107,7 +107,7 @@ export default function WorkshopManager({ token, workshops }: Props): ReactEleme
     <section className="grid card">
       {error ? <p style={{ color: "var(--color-danger)" }}>{error}</p> : null}
 
-      <form onSubmit={onCreate} className="grid" style={{ gridTemplateColumns: "repeat(2, minmax(0,1fr))" }}>
+      <form onSubmit={onCreate} className="form-2col">
         <input className="input" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         <input className="input" placeholder="Speaker" value={form.speakerName} onChange={(e) => setForm({ ...form, speakerName: e.target.value })} required />
         <input className="input" placeholder="Room" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} required />
@@ -136,12 +136,12 @@ export default function WorkshopManager({ token, workshops }: Props): ReactEleme
           <p>Selected: {selected.title} ({selected.status})</p>
           <p>Summary status: {selected.summaryStatus}</p>
           {selected.aiSummary ? <p>{selected.aiSummary}</p> : null}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="inline-actions">
             <button className="btn btn-secondary" type="button" onClick={onUpdate}>Save selected workshop</button>
-            <button className="btn" style={{ background: "#fee2e2", color: "#991b1b" }} type="button" onClick={onCancel}>Cancel selected workshop</button>
+            <button className="btn btn-danger" type="button" onClick={onCancel}>Cancel selected workshop</button>
           </div>
 
-          <div className="grid" style={{ gridTemplateColumns: "1fr auto" }}>
+          <div className="form-2col">
             <input className="input" type="file" accept="application/pdf" onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)} />
             <button className="btn btn-secondary" type="button" onClick={onUploadPdf} disabled={!selectedFile}>Upload PDF</button>
           </div>

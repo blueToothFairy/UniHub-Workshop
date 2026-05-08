@@ -36,8 +36,8 @@ export default function RegisterForm(): ReactElement {
   };
 
   return (
-    <form onSubmit={onSubmit} className="card grid" style={{ maxWidth: 500, margin: "0 auto" }}>
-      <h1 style={{ marginBottom: 0 }}>Create account</h1>
+    <form onSubmit={onSubmit} className="card grid auth-shell">
+      <h1 className="auth-title">Create account</h1>
       {error ? <p style={{ color: "var(--color-danger)" }}>{error}</p> : null}
       <input className="input" type="text" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
       <input className="input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />

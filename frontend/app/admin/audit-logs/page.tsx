@@ -13,14 +13,14 @@ export default async function AdminAuditLogsPage(): Promise<ReactElement> {
   return (
     <section className="grid">
       <h1>Audit logs</h1>
-      <div className="card" style={{ overflowX: "auto" }}>
-        <table cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
+      <div className="card table-wrap">
+        <table className="data-table">
           <thead>
             <tr>
-              <th align="left">Time</th>
-              <th align="left">Action</th>
-              <th align="left">Actor</th>
-              <th align="left">Target</th>
+              <th>Time</th>
+              <th>Action</th>
+              <th>Actor</th>
+              <th>Target</th>
             </tr>
           </thead>
           <tbody>
@@ -38,4 +38,3 @@ export default async function AdminAuditLogsPage(): Promise<ReactElement> {
     </section>
   );
 }
-

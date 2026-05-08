@@ -11,6 +11,9 @@ export interface Workshop {
   endsAt: string;
   capacity: number;
   confirmedRegistrations: number;
+  reservedCount: number;
+  confirmedCount: number;
+  availableSeats: number;
   priceVnd: number;
   paymentRequired: boolean;
   status: WorkshopStatus;
