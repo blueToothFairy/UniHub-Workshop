@@ -19,13 +19,36 @@ function readCookie(name: string): string {
   return "";
 }
 
-function getOrCreateIdempotencyKey(workshopId: string): string {
-  const storageKey = `registration-idempotency-${workshopId}`;
+function getTokenSubject(accessToken: string): string | null {
+  try {
+    const segments = accessToken.split(".");
+    if (segments.length !== 3) return null;
+    const base64 = segments[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const payload = JSON.parse(atob(padded)) as { sub?: string };
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function getIdempotencyStorageKey(workshopId: string, accessToken: string): string {
+  const userId = getTokenSubject(accessToken) ?? "unknown-user";
+  return `registration-idempotency-${userId}-${workshopId}`;
+}
+
+function getOrCreateIdempotencyKey(workshopId: string, accessToken: string): string {
+  const storageKey = getIdempotencyStorageKey(workshopId, accessToken);
   const existing = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
   if (existing) return existing;
   const key = crypto.randomUUID();
   if (typeof window !== "undefined") window.localStorage.setItem(storageKey, key);
   return key;
+}
+
+function clearIdempotencyKey(workshopId: string, accessToken: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(getIdempotencyStorageKey(workshopId, accessToken));
 }
 
 export default function StudentWorkshopDetailPage({ params }: Props) {
@@ -120,9 +143,7 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
       if (status.registration_status === "confirmed") {
         const qr = await registrationApi.getRegistrationQr(token, registrationId);
         setQrData(qr);
-        if (typeof window !== "undefined") {
-          window.localStorage.removeItem(`registration-idempotency-${params.id}`);
-        }
+        clearIdempotencyKey(params.id, token);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to refresh payment status");
@@ -137,13 +158,11 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
     try {
       const token = readCookie("access_token");
       if (!token) throw new Error("Please login as student first");
-      const idempotencyKey = getOrCreateIdempotencyKey(params.id);
+      const idempotencyKey = getOrCreateIdempotencyKey(params.id, token);
       const created = await registrationApi.createRegistration(token, params.id, idempotencyKey);
       setRegistration(created);
       if (created.registration_status === "confirmed") {
-        if (typeof window !== "undefined") {
-          window.localStorage.removeItem(`registration-idempotency-${params.id}`);
-        }
+        clearIdempotencyKey(params.id, token);
       } else {
         setPaymentStatus({
           registration_id: created.registration_id,
@@ -158,6 +177,10 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
         }
       }
     } catch (e) {
+      if (e instanceof Error && e.message.includes("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST")) {
+        setError("Registration session conflict detected for this account. Please refresh the page and try registering again.");
+        return;
+      }
       setError(e instanceof Error ? e.message : "Failed to register");
     } finally {
       setSubmitting(false);

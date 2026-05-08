@@ -30,6 +30,7 @@ interface ExistingIdempotentRow {
   id: string;
   request_hash: string;
   registration_id: string;
+  registration_status: RegistrationStatus;
 }
 
 interface RegistrationRow {
@@ -105,7 +106,11 @@ export class RegistrationService {
     const requestHash = this.computeRequestHash(params.userId, params.workshopId);
 
     const existing = await dbPool.query<ExistingIdempotentRow>(
-      "SELECT id, request_hash, registration_id FROM payments WHERE idempotency_key=$1 LIMIT 1",
+      `SELECT p.id, p.request_hash, p.registration_id, r.status AS registration_status
+       FROM payments p
+       JOIN registrations r ON r.id = p.registration_id
+       WHERE p.idempotency_key=$1
+       LIMIT 1`,
       [params.idempotencyKey]
     );
     const existingRow = existing.rows[0];
@@ -113,7 +118,10 @@ export class RegistrationService {
       if (existingRow.request_hash !== requestHash) {
         throw new AppError(409, "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST", "Idempotency-Key reused for a different request");
       }
-      return this.getReplayResponse(existingRow.registration_id);
+      if (existingRow.registration_status === "pending_payment" || existingRow.registration_status === "confirmed") {
+        return this.getReplayResponse(existingRow.registration_id);
+      }
+      await this.releaseTerminalIdempotencyKey(existingRow.id, params.idempotencyKey);
     }
 
     const client = await dbPool.connect();
@@ -153,13 +161,22 @@ export class RegistrationService {
           throw new AppError(500, "PAYMENT_NOT_FOUND", "Active pending registration is missing payment state");
         }
         await client.query("ROLLBACK");
+        const recovered = await this.recoverPaymentUrlIfMissing({
+          paymentId: paymentRow.id,
+          registrationId: activeRow.id,
+          workshopId: activeRow.workshop_id,
+          providerOrderId: paymentRow.provider_order_id,
+          amountVnd: paymentRow.amount_vnd,
+          paymentStatus: paymentRow.status,
+          paymentUrl: paymentRow.payment_url
+        });
         return {
           registration_id: activeRow.id,
           registration_status: "pending_payment",
           payment_required: true,
           payment_id: paymentRow.id,
-          payment_status: paymentRow.status === "unknown" ? "unknown" : "pending_provider",
-          payment_url: paymentRow.payment_url,
+          payment_status: recovered.paymentStatus,
+          payment_url: recovered.paymentUrl,
           next_action: "redirect_to_payment"
         };
       }
@@ -505,16 +522,22 @@ export class RegistrationService {
       registration_id: string;
       workshop_id: string;
       registration_status: "pending_payment" | "confirmed";
+      payment_id: string;
       payment_status: InternalPaymentStatus;
       payment_url: string | null;
+      provider_order_id: string | null;
+      amount_vnd: number;
       qr_token: string | null;
     }>(
       `SELECT
          r.id AS registration_id,
          r.workshop_id AS workshop_id,
          r.status AS registration_status,
+         p.id AS payment_id,
          p.status AS payment_status,
-         p.payment_url AS payment_url,
+          p.payment_url AS payment_url,
+         p.provider_order_id AS provider_order_id,
+         p.amount_vnd AS amount_vnd,
          r.qr_token AS qr_token
        FROM registrations r
        JOIN payments p ON p.registration_id = r.id
@@ -529,9 +552,21 @@ export class RegistrationService {
     if (!row) {
       throw new AppError(404, "REGISTRATION_NOT_FOUND", "No active registration for this workshop");
     }
+    const recovered = row.registration_status === "pending_payment"
+      ? await this.recoverPaymentUrlIfMissing({
+        paymentId: row.payment_id,
+        registrationId: row.registration_id,
+        workshopId: row.workshop_id,
+        providerOrderId: row.provider_order_id,
+        amountVnd: row.amount_vnd,
+        paymentStatus: row.payment_status,
+        paymentUrl: row.payment_url
+      })
+      : { paymentStatus: "pending_provider" as const, paymentUrl: row.payment_url };
+
     const paymentStatus = row.registration_status === "confirmed"
       ? "completed"
-      : row.payment_status === "unknown"
+      : recovered.paymentStatus === "unknown"
         ? "unknown"
         : "pending_provider";
 
@@ -540,7 +575,7 @@ export class RegistrationService {
       workshop_id: row.workshop_id,
       registration_status: row.registration_status,
       payment_status: paymentStatus,
-      payment_url: row.payment_url,
+      payment_url: recovered.paymentUrl,
       qr_available: row.registration_status === "confirmed" && Boolean(row.qr_token)
     };
   }
@@ -698,8 +733,12 @@ export class RegistrationService {
       payment_id: string;
       payment_status: InternalPaymentStatus;
       payment_url: string | null;
+      provider_order_id: string | null;
+      amount_vnd: number;
+      workshop_id: string;
     }>(
-      `SELECT r.id AS registration_id, r.status AS registration_status, p.id AS payment_id, p.status AS payment_status, p.payment_url
+      `SELECT r.id AS registration_id, r.status AS registration_status, r.workshop_id AS workshop_id,
+              p.id AS payment_id, p.status AS payment_status, p.payment_url, p.provider_order_id, p.amount_vnd
        FROM registrations r
        JOIN payments p ON p.registration_id = r.id
        WHERE r.id=$1
@@ -718,15 +757,142 @@ export class RegistrationService {
         qr_available: true
       };
     }
+    if (row.registration_status === "expired") {
+      throw new AppError(409, "REGISTRATION_EXPIRED", "Previous registration has expired. Submit again to create a new payment session");
+    }
+    if (row.registration_status === "cancelled") {
+      throw new AppError(409, "REGISTRATION_CANCELLED", "Previous registration was cancelled. Submit again to create a new payment session");
+    }
+    const recovered = await this.recoverPaymentUrlIfMissing({
+      paymentId: row.payment_id,
+      registrationId: row.registration_id,
+      workshopId: row.workshop_id,
+      providerOrderId: row.provider_order_id,
+      amountVnd: row.amount_vnd,
+      paymentStatus: row.payment_status,
+      paymentUrl: row.payment_url
+    });
     return {
       registration_id: row.registration_id,
       registration_status: "pending_payment",
       payment_required: true,
       payment_id: row.payment_id,
-      payment_status: row.payment_status === "unknown" ? "unknown" : "pending_provider",
-      payment_url: row.payment_url,
+      payment_status: recovered.paymentStatus,
+      payment_url: recovered.paymentUrl,
       next_action: "redirect_to_payment"
     };
+  }
+
+  private async releaseTerminalIdempotencyKey(paymentId: string, idempotencyKey: string): Promise<void> {
+    const archivedKey = `${idempotencyKey}::terminal::${randomUUID()}`;
+    await dbPool.query(
+      `UPDATE payments p
+       SET idempotency_key=$2, updated_at=$3
+       FROM registrations r
+       WHERE p.id=$1
+         AND p.idempotency_key=$4
+         AND r.id = p.registration_id
+         AND r.status IN ('expired', 'cancelled')`,
+      [paymentId, archivedKey, this.now().toISOString(), idempotencyKey]
+    );
+  }
+
+  private async recoverPaymentUrlIfMissing(input: {
+    paymentId: string;
+    registrationId: string;
+    workshopId: string;
+    providerOrderId: string | null;
+    amountVnd: number;
+    paymentStatus: InternalPaymentStatus;
+    paymentUrl: string | null;
+  }): Promise<{ paymentStatus: "pending_provider" | "unknown"; paymentUrl: string | null }> {
+    if (input.paymentUrl) {
+      return {
+        paymentStatus: input.paymentStatus === "unknown" ? "unknown" : "pending_provider",
+        paymentUrl: input.paymentUrl
+      };
+    }
+    if (!this.momoAdapter || this.paymentGatewayMode !== "momo_sandbox") {
+      return {
+        paymentStatus: input.paymentStatus === "unknown" ? "unknown" : "pending_provider",
+        paymentUrl: null
+      };
+    }
+
+    const initialProviderOrderId = input.providerOrderId ?? `momo-${input.registrationId}`;
+    const attemptCreate = async (providerOrderId: string): Promise<{
+      response: Awaited<ReturnType<IMomoAdapter["createOrder"]>>;
+      providerOrderId: string;
+    }> => {
+      const response = await this.momoAdapter!.createOrder({
+        requestId: randomUUID(),
+        orderId: providerOrderId,
+        amount: input.amountVnd,
+        orderInfo: `Workshop ${input.workshopId} registration`,
+        extraData: input.registrationId
+      });
+      return { response, providerOrderId };
+    };
+
+    try {
+      let { response, providerOrderId } = await attemptCreate(initialProviderOrderId);
+      if ((response.resultCode === "41" || response.message.toLowerCase().includes("trùng orderid")) && !response.payUrl) {
+        const retryOrderId = `momo-${input.registrationId}-${randomUUID().slice(0, 8)}`;
+        ({ response, providerOrderId } = await attemptCreate(retryOrderId));
+      }
+
+      const nowIso = this.now().toISOString();
+      if (response.resultCode === "0" && response.payUrl) {
+        await dbPool.query(
+          `UPDATE payments
+           SET provider_order_id=$2, payment_url=$3, provider_request_id=$4, provider_result_code=$5, provider_message=$6,
+               provider_trans_id=$7, provider_raw_response=$8::jsonb, status='pending_provider', updated_at=$9
+           WHERE id=$1`,
+          [
+            input.paymentId,
+            providerOrderId,
+            response.payUrl,
+            response.requestId,
+            response.resultCode,
+            response.message,
+            response.transId ? String(response.transId) : null,
+            JSON.stringify(response),
+            nowIso
+          ]
+        );
+        return { paymentStatus: "pending_provider", paymentUrl: response.payUrl };
+      }
+
+      await dbPool.query(
+        `UPDATE payments
+         SET provider_order_id=$2, provider_request_id=$3, provider_result_code=$4, provider_message=$5,
+             provider_raw_response=$6::jsonb, status='unknown', updated_at=$7
+         WHERE id=$1`,
+        [
+          input.paymentId,
+          providerOrderId,
+          response.requestId,
+          response.resultCode,
+          response.message,
+          JSON.stringify(response),
+          nowIso
+        ]
+      );
+      return { paymentStatus: "unknown", paymentUrl: response.payUrl ?? null };
+    } catch (error) {
+      await dbPool.query(
+        `UPDATE payments
+         SET provider_order_id=$2, status='unknown', provider_message=$3, updated_at=$4
+         WHERE id=$1`,
+        [
+          input.paymentId,
+          initialProviderOrderId,
+          error instanceof Error ? error.message : "Recover payment link failed",
+          this.now().toISOString()
+        ]
+      );
+      return { paymentStatus: "unknown", paymentUrl: null };
+    }
   }
 
   private async lockPublishedWorkshop(client: PoolClient, workshopId: string): Promise<WorkshopRow> {
