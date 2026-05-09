@@ -90,26 +90,26 @@ export default function PaymentReturnPage() {
     <main className="section">
       <div className="container grid">
         <article className="card grid">
-          <h1 style={{ margin: 0 }}>Kết quả thanh toán MoMo</h1>
-          {loading ? <p>Đang kiểm tra trạng thái thanh toán...</p> : null}
+          <h1 style={{ margin: 0 }}>MoMo Payment Result</h1>
+          {loading ? <p>Checking payment status...</p> : null}
           {error ? <p style={{ color: "var(--color-danger)" }}>{error}</p> : null}
 
           {status ? (
             <>
               <p><strong>Registration ID:</strong> {status.registration_id}</p>
-              <p><strong>Trạng thái đăng ký:</strong> {status.registration_status}</p>
-              <p><strong>Trạng thái thanh toán:</strong> {status.payment_status}</p>
+              <p><strong>Registration Status:</strong> {status.registration_status}</p>
+              <p><strong>Payment Status:</strong> {status.payment_status}</p>
             </>
           ) : null}
 
           {status?.registration_status === "pending_payment" ? (
-            <p>Hệ thống đang chờ callback hoặc đối soát. Bạn có thể chờ vài giây rồi tải lại trang.</p>
+            <p>The system is waiting for a callback or reconciliation. You can wait a few minutes and then reload the page.</p>
           ) : null}
           {status?.registration_status === "cancelled" ? (
-            <p>Thanh toán thất bại hoặc bị hủy. Bạn có thể thử đăng ký lại nếu workshop còn chỗ.</p>
+            <p>Payment failed or was cancelled. You can try registering again if the workshop still has availability.</p>
           ) : null}
           {status?.payment_status === "requires_review" ? (
-            <p>Thanh toán thành công muộn sau khi giữ chỗ hết hạn. Hệ thống đã chuyển hồ sơ sang trạng thái cần rà soát.</p>
+            <p>Payment succeeded but after the booking expired. The system has moved the application to the review status.</p>
           ) : null}
 
           {qrImageUrl ? (
