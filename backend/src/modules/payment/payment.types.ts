@@ -81,6 +81,8 @@ export interface MomoSandboxConfig {
   ipnUrl: string;
   requestType?: "captureWallet";
   lang?: "vi" | "en";
+  createOrderTimeoutMs?: number;
+  queryTimeoutMs?: number;
 }
 
 export interface MomoSignatureMaterial {

@@ -12,7 +12,8 @@
     "test:workshop:map": "tsx scripts/test_workshop_mapping.ts",
     "test:workshop:integration": "tsx scripts/test_integration_workshop_read.ts",
     "test:payment:contracts": "tsx scripts/test_payment_callback_integration.ts",
-    "test:payment:contention": "tsx scripts/test_paid_flow_contention.ts"
+    "test:payment:contention": "tsx scripts/test_paid_flow_contention.ts",
+    "test:payment:circuit-breaker": "tsx scripts/test_payment_circuit_breaker_integration.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1041.0",

@@ -6,6 +6,8 @@ import { dbPool } from "../../shared/infra/db.js";
 import type { IQueue } from "../../shared/interfaces/IQueue.js";
 import type { IMomoAdapter } from "../payment/momo.adapter.js";
 import { isTerminalPaymentStatus, type InternalPaymentStatus, type MomoCallbackPayload } from "../payment/payment.types.js";
+import type { CircuitState, IPaymentCircuitBreaker } from "../payment/payment-circuit-breaker.types.js";
+import { PaymentGatewayUnavailableError } from "../payment/payment-circuit-breaker.service.js";
 import type {
   CreateRegistrationResponse,
   CurrentRegistrationResponse,
@@ -70,6 +72,7 @@ interface RegistrationWithPaymentRow {
 interface RegistrationServiceOptions {
   momoAdapter?: IMomoAdapter;
   paymentGatewayMode?: "momo_sandbox" | "simulation";
+  paymentCircuitBreaker?: IPaymentCircuitBreaker;
   reservationTtlMinutes?: number;
   now?: () => Date;
 }
@@ -84,6 +87,7 @@ interface ConfirmationEventPayload {
 export class RegistrationService {
   private readonly momoAdapter?: IMomoAdapter;
   private readonly paymentGatewayMode: "momo_sandbox" | "simulation";
+  private readonly paymentCircuitBreaker?: IPaymentCircuitBreaker;
   private readonly reservationTtlMinutes: number;
   private readonly now: () => Date;
 
@@ -93,6 +97,7 @@ export class RegistrationService {
   ) {
     this.momoAdapter = options.momoAdapter;
     this.paymentGatewayMode = options.paymentGatewayMode ?? "momo_sandbox";
+    this.paymentCircuitBreaker = options.paymentCircuitBreaker;
     this.reservationTtlMinutes = options.reservationTtlMinutes ?? 10;
     this.now = options.now ?? (() => new Date());
   }
@@ -125,6 +130,7 @@ export class RegistrationService {
     }
 
     const client = await dbPool.connect();
+    let paidAdmissionState: CircuitState = "CLOSED";
     let created: {
       registrationId: string;
       paymentId: string | null;
@@ -181,14 +187,13 @@ export class RegistrationService {
         };
       }
 
-      await client.query("UPDATE workshops SET reserved_count = reserved_count + 1 WHERE id=$1", [params.workshopId]);
-
       const registrationId = randomUUID();
       const now = this.now();
       const nowIso = now.toISOString();
       const reservationExpiry = new Date(now.getTime() + this.reservationTtlMinutes * 60 * 1000).toISOString();
 
       if (!workshop.payment_required) {
+        await client.query("UPDATE workshops SET reserved_count = reserved_count + 1 WHERE id=$1", [params.workshopId]);
         const qrToken = this.signQrToken({
           registrationId,
           workshopId: params.workshopId,
@@ -240,6 +245,8 @@ export class RegistrationService {
           qr_available: true
         };
       }
+      paidAdmissionState = await this.acquirePaidGatewayAdmission();
+      await client.query("UPDATE workshops SET reserved_count = reserved_count + 1 WHERE id=$1", [params.workshopId]);
 
       const providerOrderId = `momo-${registrationId}`;
       const paymentId = randomUUID();
@@ -318,6 +325,7 @@ export class RegistrationService {
       const nowIso = this.now().toISOString();
 
       if (response.resultCode === "0" && response.payUrl) {
+        await this.paymentCircuitBreaker?.recordSuccess({ admissionState: paidAdmissionState });
         await dbPool.query(
           `UPDATE payments
            SET payment_url=$2, provider_request_id=$3, provider_result_code=$4, provider_message=$5,
@@ -345,6 +353,7 @@ export class RegistrationService {
         };
       }
 
+      await this.paymentCircuitBreaker?.recordFailure({ admissionState: paidAdmissionState, reason: "provider_error" });
       await dbPool.query(
         `UPDATE payments
          SET provider_request_id=$2, provider_result_code=$3, provider_message=$4,
@@ -362,6 +371,7 @@ export class RegistrationService {
         next_action: "redirect_to_payment"
       };
     } catch (error) {
+      await this.paymentCircuitBreaker?.recordFailure({ admissionState: paidAdmissionState, reason: this.classifyGatewayFailureReason(error) });
       await dbPool.query(
         `UPDATE payments
          SET status='unknown', provider_message=$2, updated_at=$3
@@ -672,6 +682,19 @@ export class RegistrationService {
           );
         }
       }
+
+      const unknownBacklogResult = await dbPool.query<{ count: string }>("SELECT COUNT(*)::text AS count FROM payments WHERE status='unknown'");
+      const unknownBacklog = Number(unknownBacklogResult.rows[0]?.count ?? "0");
+      const breakerSnapshot = this.paymentCircuitBreaker ? await this.paymentCircuitBreaker.getSnapshot() : null;
+      // eslint-disable-next-line no-console
+      console.info(JSON.stringify({
+        type: "payment_reconciliation_summary",
+        scanned: candidates.rowCount ?? 0,
+        updated,
+        unknownBacklog,
+        breakerState: breakerSnapshot?.state ?? "unconfigured",
+        breakerOpenedAtMs: breakerSnapshot?.openedAtMs ?? null
+      }));
 
       return { scanned: candidates.rowCount ?? 0, updated };
     } finally {
@@ -1073,6 +1096,25 @@ export class RegistrationService {
       "UPDATE payments SET status=$2, updated_at=$3 WHERE id=$1",
       [row.payment_id, mappedStatus, nowIso]
     );
+  }
+
+  private async acquirePaidGatewayAdmission(): Promise<CircuitState> {
+    if (!this.paymentCircuitBreaker || this.paymentGatewayMode !== "momo_sandbox" || !this.momoAdapter) {
+      return "CLOSED";
+    }
+
+    const admission = await this.paymentCircuitBreaker.evaluateAdmission();
+    if (!admission.allowed) {
+      throw new PaymentGatewayUnavailableError(admission.retryAfterSeconds);
+    }
+    return admission.state;
+  }
+
+  private classifyGatewayFailureReason(error: unknown): "timeout" | "transport_error" | "invalid_response" {
+    if (error instanceof Error && error.name === "MomoTimeoutError") {
+      return "timeout";
+    }
+    return "transport_error";
   }
 
   private computeRequestHash(userId: string, workshopId: string): string {

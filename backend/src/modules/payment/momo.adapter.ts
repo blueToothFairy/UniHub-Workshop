@@ -26,10 +26,14 @@ export interface IMomoAdapter {
 export class MomoAdapter implements IMomoAdapter {
   private readonly requestType: "captureWallet";
   private readonly lang: "vi" | "en";
+  private readonly createOrderTimeoutMs: number;
+  private readonly queryTimeoutMs: number;
 
   public constructor(private readonly config: MomoSandboxConfig) {
     this.requestType = config.requestType ?? "captureWallet";
     this.lang = config.lang ?? "vi";
+    this.createOrderTimeoutMs = config.createOrderTimeoutMs ?? 10_000;
+    this.queryTimeoutMs = config.queryTimeoutMs ?? 10_000;
   }
 
   public async createOrder(input: Pick<MomoCreateOrderRequest, "requestId" | "orderId" | "amount" | "orderInfo" | "extraData">): Promise<MomoCreateOrderResponse> {
@@ -58,7 +62,7 @@ export class MomoAdapter implements IMomoAdapter {
     });
     const signature = this.sign(canonical);
 
-    const response = await fetch(`${this.config.endpoint}/v2/gateway/api/create`, {
+    const response = await this.fetchWithTimeout(`${this.config.endpoint}/v2/gateway/api/create`, this.createOrderTimeoutMs, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -116,7 +120,7 @@ export class MomoAdapter implements IMomoAdapter {
       ].join("&")
     );
 
-    const response = await fetch(`${this.config.endpoint}/v2/gateway/api/query`, {
+    const response = await this.fetchWithTimeout(`${this.config.endpoint}/v2/gateway/api/query`, this.queryTimeoutMs, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -149,5 +153,22 @@ export class MomoAdapter implements IMomoAdapter {
 
   private sign(value: string): string {
     return createHmac("sha256", this.config.secretKey).update(value, "utf8").digest("hex");
+  }
+
+  private async fetchWithTimeout(url: string, timeoutMs: number, init: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), Math.max(timeoutMs, 1));
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        const timeoutError = new Error("MoMo request timeout");
+        timeoutError.name = "MomoTimeoutError";
+        throw timeoutError;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }

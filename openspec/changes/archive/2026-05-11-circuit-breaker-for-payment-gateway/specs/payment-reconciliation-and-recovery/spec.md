@@ -1,8 +1,5 @@
-# payment-reconciliation-and-recovery Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change payment-using-momo-sandbox-instead-of-simulation. Update Purpose after archive.
-## Requirements
 ### Requirement: Unknown/pending MoMo payments converge to terminal state
 The system MUST run reconciliation for paid registrations stuck in non-terminal states, including states accumulated during gateway degradation and breaker transitions.
 Reference: Architecture decision in project context "Payment hold + reconciliation jobs" and "Circuit Breaker for Momo".
@@ -22,26 +19,7 @@ Reference: Architecture decision in project context "Payment hold + reconciliati
 - **WHEN** request `POST /payments/jobs/reconcile` is retried for overlapping candidates
 - **THEN** API MUST return HTTP `200` with body `{ "data": { "scanned": number, "updated": number } }` and MUST preserve idempotent side effects for already terminal rows
 
-### Requirement: Reservation expiry for unresolved paid registrations
-The system MUST expire stale pending registrations that exceed reservation TTL.
-
-#### Scenario: Pending paid registration exceeds expiration window
-- **WHEN** registration remains `pending_payment` past `reservation_expires_at`
-- **THEN** system MUST transition registration/payment to expired policy states and decrement `reserved_count` exactly once
-
-### Requirement: Late success after expiry is safe and reviewable
-The system MUST prevent oversell when successful provider confirmation arrives after reservation expiry.
-
-#### Scenario: Success callback arrives after registration expired
-- **WHEN** callback reports successful payment for already expired/cancelled registration
-- **THEN** system MUST NOT auto-confirm registration, MUST mark payment for review terminal policy, and MUST return HTTP `200`
-
-### Requirement: Recovery flow is idempotent across retries
-Reconciliation and expiry jobs MUST be idempotent under repeated execution.
-
-#### Scenario: Same payment picked by multiple retries over time
-- **WHEN** job reprocesses a payment already moved to terminal state
-- **THEN** no additional seat/counter side effects MUST occur
+## ADDED Requirements
 
 ### Requirement: Degradation observability for recovery backlog
 The system MUST expose telemetry to detect prolonged payment degradation and unresolved unknown-state growth.
@@ -55,4 +33,3 @@ The system MUST expose telemetry to detect prolonged payment degradation and unr
 - **GIVEN** client may be offline while backend remains online
 - **WHEN** pending paid registrations are reconciled or expired by backend jobs
 - **THEN** recovery behavior MUST remain backend-driven and deterministic, and client state MUST synchronize through next online status query
-

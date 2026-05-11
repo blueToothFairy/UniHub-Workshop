@@ -15,6 +15,25 @@ interface ApiErrorBody {
   error: { code: string; message: string };
 }
 
+interface ApiTemporaryUnavailableBody {
+  error: string;
+  message: string;
+  retry_after: number;
+}
+
+export class ApiRequestError extends Error {
+  public readonly code: string;
+  public readonly statusCode: number;
+  public readonly retryAfterSeconds?: number;
+
+  public constructor(input: { code: string; message: string; statusCode: number; retryAfterSeconds?: number }) {
+    super(`${input.code}: ${input.message}`);
+    this.code = input.code;
+    this.statusCode = input.statusCode;
+    this.retryAfterSeconds = input.retryAfterSeconds;
+  }
+}
+
 export interface CreateRegistrationResultFree {
   registration_id: string;
   registration_status: "confirmed";
@@ -61,10 +80,28 @@ export interface CurrentRegistrationData {
 async function parseResponse<T>(response: Response): Promise<T> {
   const body: unknown = await response.json();
   if (!response.ok) {
-    const err = body as ApiErrorBody;
-    throw new Error(`${err.error?.code ?? "API_ERROR"}: ${err.error?.message ?? "Request failed"}`);
+    throw toApiRequestError(response.status, body);
   }
   return (body as { data: T }).data;
+}
+
+function toApiRequestError(statusCode: number, body: unknown): ApiRequestError {
+  const wrapped = body as ApiErrorBody;
+  if (wrapped?.error && typeof wrapped.error !== "string") {
+    return new ApiRequestError({
+      code: wrapped.error.code ?? "API_ERROR",
+      message: wrapped.error.message ?? "Request failed",
+      statusCode
+    });
+  }
+
+  const flat = body as ApiTemporaryUnavailableBody;
+  return new ApiRequestError({
+    code: typeof flat?.error === "string" ? flat.error : "API_ERROR",
+    message: typeof flat?.message === "string" ? flat.message : "Request failed",
+    statusCode,
+    retryAfterSeconds: typeof flat?.retry_after === "number" ? flat.retry_after : undefined
+  });
 }
 
 function readCookie(name: string): string {
@@ -139,11 +176,16 @@ async function withRefreshRetry<T>(request: () => Promise<Response>): Promise<T>
   const body = (await response.json().catch(() => ({}))) as { error?: { code?: string; message?: string } };
   if (body.error?.code === "TOKEN_EXPIRED") {
     const newToken = await attemptRefresh();
-    if (!newToken) throw new Error(`${body.error.code}: ${body.error.message ?? "Token expired"}`);
+    if (!newToken) {
+      throw new ApiRequestError({
+        code: body.error.code,
+        message: body.error.message ?? "Token expired",
+        statusCode: response.status
+      });
+    }
     return withRefreshRetry<T>(request);
   }
-
-  throw new Error(`${body.error?.code ?? "API_ERROR"}: ${body.error?.message ?? "Request failed"}`);
+  throw toApiRequestError(response.status, body);
 }
 
 export async function apiGet<T>(path: string, token: string): Promise<T> {

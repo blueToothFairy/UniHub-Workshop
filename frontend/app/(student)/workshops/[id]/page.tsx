@@ -1,6 +1,6 @@
 "use client";
 
-import { getWorkshopPublic, registrationApi, type CreateRegistrationResult, type RegistrationPaymentStatus, type RegistrationQrData } from "@/lib/api";
+import { ApiRequestError, getWorkshopPublic, registrationApi, type CreateRegistrationResult, type RegistrationPaymentStatus, type RegistrationQrData } from "@/lib/api";
 import type { Workshop } from "@/types/admin";
 import { useEffect, useMemo, useState } from "react";
 
@@ -179,6 +179,11 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
     } catch (e) {
       if (e instanceof Error && e.message.includes("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST")) {
         setError("Registration session conflict detected for this account. Please refresh the page and try registering again.");
+        return;
+      }
+      if (e instanceof ApiRequestError && e.code === "PAYMENT_GATEWAY_UNAVAILABLE") {
+        const retryText = e.retryAfterSeconds ? ` Please try again in about ${e.retryAfterSeconds} seconds.` : "";
+        setError(`${e.message}.${retryText}`);
         return;
       }
       setError(e instanceof Error ? e.message : "Failed to register");
