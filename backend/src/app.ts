@@ -23,6 +23,13 @@ import { createPaymentRouter } from "./modules/payment/payment.router.js";
 import { Redis } from "ioredis";
 import { PaymentCircuitBreaker } from "./modules/payment/payment-circuit-breaker.service.js";
 import { RedisPaymentCircuitBreakerStore } from "./modules/payment/payment-circuit-breaker.store.js";
+import { NotificationRepository } from "./modules/notification/notification.repository.js";
+import { NotificationService } from "./modules/notification/notification.service.js";
+import { InAppNotificationChannel } from "./modules/notification/channels/inapp.channel.js";
+import { EmailNotificationChannel } from "./modules/notification/channels/email.channel.js";
+import { RegistrationConfirmedWorker } from "./workers/registration-confirmed.worker.js";
+import { NotificationDeliveryWorker } from "./workers/notification-delivery.worker.js";
+import { createNotificationRouter } from "./modules/notification/notification.router.js";
 
 const app: Express = express();
 const allowedOrigins: string[] = (process.env.ALLOWED_ORIGINS ?? "http://localhost:3001").split(",").map((s) => s.trim());
@@ -68,6 +75,19 @@ const registrationService = new RegistrationService(queue, {
     }
   )
 });
+const notificationRepository = new NotificationRepository();
+const notificationService = new NotificationService(
+  notificationRepository,
+  queue,
+  [
+    new EmailNotificationChannel(),
+    new InAppNotificationChannel(notificationRepository)
+  ]
+);
+const registrationConfirmedWorker = new RegistrationConfirmedWorker(notificationService);
+const notificationDeliveryWorker = new NotificationDeliveryWorker(notificationService);
+queue.startRegistrationConfirmedWorker((payload) => registrationConfirmedWorker.consume(payload));
+queue.startNotificationDeliveryWorker((payload) => notificationDeliveryWorker.consume(payload));
 
 app.use(
   cors({
@@ -87,6 +107,7 @@ app.use("/auth", createAuthRouter(authService));
 app.use("/admin", authenticate, authorize(["organizer"]), createAdminRouter(adminService));
 app.use("/workshops", createWorkshopRouter(workshopService));
 app.use("/registrations", authenticate, authorize(["student"]), createRegistrationRouter(registrationService));
+app.use("/notifications", authenticate, authorize(["student"]), createNotificationRouter(notificationService));
 app.use("/payments", createPaymentRouter(registrationService));
 
 const port: number = Number(process.env.PORT ?? 3000);

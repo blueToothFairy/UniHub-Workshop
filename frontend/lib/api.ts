@@ -77,6 +77,30 @@ export interface CurrentRegistrationData {
   qr_available: boolean;
 }
 
+export interface NotificationInboxItem {
+  id: string;
+  title: string;
+  body: string;
+  type: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+export interface NotificationListResponse {
+  items: NotificationInboxItem[];
+  next_cursor: string | null;
+}
+
+export interface NotificationUnreadCountResponse {
+  unread_count: number;
+}
+
+export interface NotificationMarkReadResponse {
+  id: string;
+  is_read: true;
+  read_at: string;
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const body: unknown = await response.json();
   if (!response.ok) {
@@ -286,6 +310,20 @@ export const registrationApi = {
     apiGet<RegistrationQrData>(`/registrations/${registrationId}/qr`, token),
   getCurrentRegistrationByWorkshop: (token: string, workshopId: string): Promise<CurrentRegistrationData> =>
     apiGet<CurrentRegistrationData>(`/registrations/workshops/${workshopId}/current`, token)
+};
+
+export const notificationApi = {
+  listNotifications: (token: string, input?: { limit?: number; cursor?: string }): Promise<NotificationListResponse> => {
+    const params = new URLSearchParams();
+    if (input?.limit) params.set("limit", String(input.limit));
+    if (input?.cursor) params.set("cursor", input.cursor);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return apiGet<NotificationListResponse>(`/notifications${suffix}`, token);
+  },
+  getUnreadCount: (token: string): Promise<NotificationUnreadCountResponse> =>
+    apiGet<NotificationUnreadCountResponse>("/notifications/unread-count", token),
+  markRead: (token: string, notificationId: string): Promise<NotificationMarkReadResponse> =>
+    apiPost<NotificationMarkReadResponse>(`/notifications/${notificationId}/read`, token, {})
 };
 
 export async function getWorkshopPublic(id: string): Promise<Workshop> {

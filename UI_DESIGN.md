@@ -47,8 +47,15 @@ Shadows:
   - `btn-primary`: dark filled pill with shadow.
   - `btn-secondary`: soft surface pill with border.
   - `btn-danger`: soft red surface for destructive actions.
+- Header:
+  - Auth-aware nav controls: unauthenticated users see `Sign up` + `Log in`; authenticated users see notification icon + `Logout`.
+  - Notification trigger should feel compact and tool-like (rectangular/rounded-square), not capsule-pill.
 - Cards:
   - rounded (`16px`), bordered, semi-elevated.
+- Notification inbox dropdown:
+  - Opens from header icon and uses a scrollable list container (fixed max-height + vertical overflow).
+  - Unread items must be visually elevated using stronger border/background/shadow and bolder title text.
+  - Avoid pill-style unread chips inside each item; prefer card emphasis for unread state.
 - Data tables:
   - compact header, subtle row hover, border separators.
 - Status badges:

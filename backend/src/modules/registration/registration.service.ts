@@ -8,6 +8,7 @@ import type { IMomoAdapter } from "../payment/momo.adapter.js";
 import { isTerminalPaymentStatus, type InternalPaymentStatus, type MomoCallbackPayload } from "../payment/payment.types.js";
 import type { CircuitState, IPaymentCircuitBreaker } from "../payment/payment-circuit-breaker.types.js";
 import { PaymentGatewayUnavailableError } from "../payment/payment-circuit-breaker.service.js";
+import type { RegistrationConfirmedQueuePayload } from "../notification/notification.types.js";
 import type {
   CreateRegistrationResponse,
   CurrentRegistrationResponse,
@@ -77,12 +78,7 @@ interface RegistrationServiceOptions {
   now?: () => Date;
 }
 
-interface ConfirmationEventPayload {
-  registrationId: string;
-  workshopId: string;
-  userId: string;
-  confirmedAt: string;
-}
+type ConfirmationEventPayload = RegistrationConfirmedQueuePayload;
 
 export class RegistrationService {
   private readonly momoAdapter?: IMomoAdapter;
@@ -231,12 +227,12 @@ export class RegistrationService {
 
         await client.query("COMMIT");
 
-        await this.queue.enqueueRegistrationConfirmed({
+        await this.tryEnqueueRegistrationConfirmed({
           registrationId,
           workshopId: params.workshopId,
           userId: params.userId,
           confirmedAt: nowIso
-        });
+        }, "createRegistration.free");
 
         return {
           registration_id: registrationId,
@@ -424,7 +420,7 @@ export class RegistrationService {
       client.release();
     }
     if (confirmationEvent) {
-      await this.queue.enqueueRegistrationConfirmed(confirmationEvent);
+      await this.tryEnqueueRegistrationConfirmed(confirmationEvent, "handleMomoCallback");
     }
   }
 
@@ -670,7 +666,7 @@ export class RegistrationService {
             lockClient.release();
           }
           if (confirmationEvent) {
-            await this.queue.enqueueRegistrationConfirmed(confirmationEvent);
+            await this.tryEnqueueRegistrationConfirmed(confirmationEvent, "runReconciliationBatch");
           }
           updated += 1;
         } catch {
@@ -1115,6 +1111,21 @@ export class RegistrationService {
       return "timeout";
     }
     return "transport_error";
+  }
+
+  private async tryEnqueueRegistrationConfirmed(payload: RegistrationConfirmedQueuePayload, source: string): Promise<void> {
+    try {
+      await this.queue.enqueueRegistrationConfirmed(payload);
+    } catch (error: unknown) {
+      // Keep registration/payment transitions non-blocking for notification enqueue failures.
+      // eslint-disable-next-line no-console
+      console.error(JSON.stringify({
+        type: "registration_confirmed_enqueue_failed",
+        source,
+        payload,
+        error: error instanceof Error ? error.message : "Unknown enqueue error"
+      }));
+    }
   }
 
   private computeRequestHash(userId: string, workshopId: string): string {
