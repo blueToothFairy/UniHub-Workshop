@@ -20,6 +20,8 @@ import { createRegistrationRouter } from "./modules/registration/registration.ro
 import { RegistrationService } from "./modules/registration/registration.service.js";
 import { MomoAdapter } from "./modules/payment/momo.adapter.js";
 import { createPaymentRouter } from "./modules/payment/payment.router.js";
+import { CheckinService } from "./modules/checkin/checkin.service.js";
+import { createCheckinRouter } from "./modules/checkin/checkin.router.js";
 
 const app: Express = express();
 const allowedOrigins: string[] = (process.env.ALLOWED_ORIGINS ?? "http://localhost:3001").split(",").map((s) => s.trim());
@@ -51,6 +53,7 @@ const registrationService = new RegistrationService(queue, {
   momoAdapter,
   paymentGatewayMode: (process.env.PAYMENT_GATEWAY_MODE === "simulation" ? "simulation" : "momo_sandbox")
 });
+const checkinService = new CheckinService(database);
 
 app.use(
   cors({
@@ -70,6 +73,7 @@ app.use("/auth", createAuthRouter(authService));
 app.use("/admin", authenticate, authorize(["organizer"]), createAdminRouter(adminService));
 app.use("/workshops", createWorkshopRouter(workshopService));
 app.use("/registrations", authenticate, authorize(["student"]), createRegistrationRouter(registrationService));
+app.use("/checkin", authenticate, authorize(["checkin_staff"]), createCheckinRouter(checkinService));
 app.use("/payments", createPaymentRouter(registrationService));
 
 const port: number = Number(process.env.PORT ?? 3000);

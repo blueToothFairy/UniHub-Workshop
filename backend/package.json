@@ -12,7 +12,10 @@
     "test:workshop:map": "tsx scripts/test_workshop_mapping.ts",
     "test:workshop:integration": "tsx scripts/test_integration_workshop_read.ts",
     "test:payment:contracts": "tsx scripts/test_payment_callback_integration.ts",
-    "test:payment:contention": "tsx scripts/test_paid_flow_contention.ts"
+    "test:payment:contention": "tsx scripts/test_paid_flow_contention.ts",
+    "test:checkin:service": "tsx scripts/test_checkin_service.ts",
+    "test:checkin:admin": "tsx scripts/test_checkin_admin_stats.ts",
+    "test:checkin:concurrency": "tsx scripts/test_checkin_concurrency.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1041.0",

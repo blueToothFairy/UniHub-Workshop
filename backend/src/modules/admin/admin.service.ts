@@ -228,6 +228,8 @@ export class AdminService {
 
     const row = result.rows[0];
     const totalRegistrations = Number(row?.total_registrations ?? 0);
+    const checkinsResult = await this.database.query<{ total: string }>("SELECT COUNT(*)::text AS total FROM workshop_checkins");
+    const totalCheckins = Number(checkinsResult.rows[0]?.total ?? 0);
 
     return {
       totalWorkshops: Number(row?.total_workshops ?? 0),
@@ -235,7 +237,7 @@ export class AdminService {
       paidWorkshops: Number(row?.paid_workshops ?? 0),
       freeWorkshops: Number(row?.free_workshops ?? 0),
       cancelledWorkshops: Number(row?.cancelled_workshops ?? 0),
-      checkins: Math.floor(totalRegistrations * 0.72),
+      checkins: totalCheckins,
       lastUpdatedAt: new Date().toISOString()
     };
   }
