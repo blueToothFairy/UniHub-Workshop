@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { AppError } from "../../shared/errors/AppError.js";
 import type { RegistrationService } from "./registration.service.js";
 import type { CreateRegistrationRequest } from "./registration.types.js";
+import { PaymentGatewayUnavailableError } from "../payment/payment-circuit-breaker.service.js";
 
 export function createRegistrationRouter(registrationService: RegistrationService): Router {
   const router = Router();
@@ -71,6 +72,14 @@ export function createRegistrationRouter(registrationService: RegistrationServic
 }
 
 function handleError(error: unknown, res: Response): void {
+  if (error instanceof PaymentGatewayUnavailableError) {
+    res.status(error.statusCode).json({
+      error: error.code,
+      message: error.message,
+      retry_after: error.retryAfterSeconds
+    });
+    return;
+  }
   if (error instanceof AppError) {
     res.status(error.statusCode).json({ error: { code: error.code, message: error.message } });
     return;

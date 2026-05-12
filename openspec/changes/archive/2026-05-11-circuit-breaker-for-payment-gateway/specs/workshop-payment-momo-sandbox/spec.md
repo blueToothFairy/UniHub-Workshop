@@ -1,8 +1,5 @@
-# workshop-payment-momo-sandbox Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change payment-using-momo-sandbox-instead-of-simulation. Update Purpose after archive.
-## Requirements
 ### Requirement: MoMo sandbox order creation for paid workshop registration
 The system MUST create a MoMo sandbox order for paid workshop registrations only when circuit-breaker admission allows provider calls, and MUST preserve idempotent response semantics for retries.
 Reference: Architecture decision in project context "Circuit Breaker for Momo: 3 states with Redis-backed state and TTL".
@@ -22,17 +19,6 @@ Reference: Architecture decision in project context "Circuit Breaker for Momo: 3
 - **WHEN** student submits paid registration request
 - **THEN** API MUST return HTTP `503` with body `{ "error": "PAYMENT_GATEWAY_UNAVAILABLE", "message": string, "retry_after": number }` and MUST NOT create a new provider order request
 
-### Requirement: MoMo callback updates payment and registration states
-The system MUST process MoMo callback synchronously and transition payment/registration states exactly once.
-
-#### Scenario: Valid success callback confirms registration
-- **WHEN** a valid MoMo success callback is received for a pending paid registration
-- **THEN** API MUST return HTTP `200`, set payment to completed, set registration to confirmed, and trigger QR issuance
-
-#### Scenario: Valid failure callback cancels pending registration
-- **WHEN** a valid MoMo failure callback is received for a pending paid registration
-- **THEN** API MUST return HTTP `200`, set payment to failed, set registration to cancelled/failed terminal policy, and release reserved seat exactly once
-
 ### Requirement: Frontend uses redirect-return payment UX
 The paid checkout UX MUST use provider redirect flow when a payment URL is available and MUST render temporary-unavailable guidance when breaker admission blocks provider session creation.
 
@@ -50,4 +36,3 @@ The paid checkout UX MUST use provider redirect flow when a payment URL is avail
 - **GIVEN** student is online and backend responds with temporary gateway unavailability
 - **WHEN** frontend receives HTTP `503` body `{ "error": "PAYMENT_GATEWAY_UNAVAILABLE", "message": string, "retry_after": number }`
 - **THEN** frontend MUST avoid redirect flow and MUST show a retry-after experience without creating duplicate paid registration submissions
-

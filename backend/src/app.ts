@@ -20,6 +20,17 @@ import { createRegistrationRouter } from "./modules/registration/registration.ro
 import { RegistrationService } from "./modules/registration/registration.service.js";
 import { MomoAdapter } from "./modules/payment/momo.adapter.js";
 import { createPaymentRouter } from "./modules/payment/payment.router.js";
+import { Redis } from "ioredis";
+import { PaymentCircuitBreaker } from "./modules/payment/payment-circuit-breaker.service.js";
+import { RedisPaymentCircuitBreakerStore } from "./modules/payment/payment-circuit-breaker.store.js";
+import { NotificationRepository } from "./modules/notification/notification.repository.js";
+import { NotificationService } from "./modules/notification/notification.service.js";
+import { InAppNotificationChannel } from "./modules/notification/channels/inapp.channel.js";
+import { EmailNotificationChannel } from "./modules/notification/channels/email.channel.js";
+import { RegistrationConfirmedWorker } from "./workers/registration-confirmed.worker.js";
+import { NotificationDeliveryWorker } from "./workers/notification-delivery.worker.js";
+import { createNotificationRouter } from "./modules/notification/notification.router.js";
+
 import { CheckinService } from "./modules/checkin/checkin.service.js";
 import { createCheckinRouter } from "./modules/checkin/checkin.router.js";
 
@@ -32,6 +43,7 @@ if (!redisUrl) {
   throw new Error("REDIS_URL is required for BullMQ queue");
 }
 const queue = new BullMqQueue(redisUrl);
+const circuitBreakerRedis = new Redis(redisUrl, { maxRetriesPerRequest: null });
 
 const workshopSummaryRepository = new WorkshopSummaryRepository(database);
 const aiSummaryService = new AiSummaryService(workshopSummaryRepository, new CloudinaryPdfStorage(), new GeminiSummarizer(), queue);
@@ -47,12 +59,38 @@ const momoAdapter = new MomoAdapter({
   accessKey: process.env.MOMO_ACCESS_KEY ?? "",
   secretKey: process.env.MOMO_SECRET_KEY ?? "",
   redirectUrl: process.env.MOMO_REDIRECT_URL ?? "http://localhost:3001/payment-return",
-  ipnUrl: process.env.MOMO_IPN_URL ?? "http://localhost:3000/payments/momo/callback"
+  ipnUrl: process.env.MOMO_IPN_URL ?? "http://localhost:3000/payments/momo/callback",
+  createOrderTimeoutMs: Number(process.env.MOMO_CREATE_ORDER_TIMEOUT_MS ?? 10_000),
+  queryTimeoutMs: Number(process.env.MOMO_QUERY_TIMEOUT_MS ?? 10_000)
 });
 const registrationService = new RegistrationService(queue, {
   momoAdapter,
-  paymentGatewayMode: (process.env.PAYMENT_GATEWAY_MODE === "simulation" ? "simulation" : "momo_sandbox")
+  paymentGatewayMode: (process.env.PAYMENT_GATEWAY_MODE === "simulation" ? "simulation" : "momo_sandbox"),
+  paymentCircuitBreaker: new PaymentCircuitBreaker(
+    new RedisPaymentCircuitBreakerStore(circuitBreakerRedis),
+    {
+      config: {
+        failureThreshold: Number(process.env.PAYMENT_CIRCUIT_FAILURE_THRESHOLD ?? 5),
+        failureWindowSeconds: Number(process.env.PAYMENT_CIRCUIT_FAILURE_WINDOW_SECONDS ?? 30),
+        openDurationSeconds: Number(process.env.PAYMENT_CIRCUIT_OPEN_DURATION_SECONDS ?? 60),
+        halfOpenProbeLimit: Number(process.env.PAYMENT_CIRCUIT_HALF_OPEN_PROBE_LIMIT ?? 1)
+      }
+    }
+  )
 });
+const notificationRepository = new NotificationRepository();
+const notificationService = new NotificationService(
+  notificationRepository,
+  queue,
+  [
+    new EmailNotificationChannel(),
+    new InAppNotificationChannel(notificationRepository)
+  ]
+);
+const registrationConfirmedWorker = new RegistrationConfirmedWorker(notificationService);
+const notificationDeliveryWorker = new NotificationDeliveryWorker(notificationService);
+queue.startRegistrationConfirmedWorker((payload) => registrationConfirmedWorker.consume(payload));
+queue.startNotificationDeliveryWorker((payload) => notificationDeliveryWorker.consume(payload));
 const checkinService = new CheckinService(database);
 
 app.use(
@@ -73,6 +111,7 @@ app.use("/auth", createAuthRouter(authService));
 app.use("/admin", authenticate, authorize(["organizer"]), createAdminRouter(adminService));
 app.use("/workshops", createWorkshopRouter(workshopService));
 app.use("/registrations", authenticate, authorize(["student"]), createRegistrationRouter(registrationService));
+app.use("/notifications", authenticate, authorize(["student"]), createNotificationRouter(notificationService));
 app.use("/checkin", authenticate, authorize(["checkin_staff"]), createCheckinRouter(checkinService));
 app.use("/payments", createPaymentRouter(registrationService));
 

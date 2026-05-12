@@ -66,3 +66,20 @@ export async function refreshToken(refreshTokenValue: string): Promise<RefreshRe
 
   return body as RefreshResponse;
 }
+
+export async function logout(accessToken: string, refreshTokenValue: string): Promise<void> {
+  const response: Response = await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ refresh_token: refreshTokenValue })
+  });
+
+  if (!response.ok && response.status !== 401) {
+    const body: unknown = await response.json().catch(() => ({}));
+    const message = (body as { error?: { message?: string } })?.error?.message ?? "Logout failed";
+    throw new Error(message);
+  }
+}

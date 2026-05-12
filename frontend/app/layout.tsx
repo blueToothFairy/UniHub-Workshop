@@ -1,8 +1,13 @@
-﻿import Link from "next/link";
+import { HeaderSessionControls } from "@/components/layout/header-session-controls";
+import { cookies } from "next/headers";
+import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import "./globals.css";
 
 export default function RootLayout({ children }: { children: ReactNode }): ReactElement {
+  const cookieStore = cookies();
+  const initialAuthenticated = Boolean(cookieStore.get("access_token")?.value || cookieStore.get("refresh_token")?.value);
+
   return (
     <html lang="en">
       <body>
@@ -13,8 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }): React
               <nav className="nav-links" aria-label="Main Navigation">
                 <Link href="/">Home</Link>
                 <Link href="/admin">Admin</Link>
-                <Link href="/register" className="btn btn-secondary">Sign up</Link>
-                <Link href="/login" className="btn btn-primary">Log in</Link>
+                <HeaderSessionControls initialAuthenticated={initialAuthenticated} />
               </nav>
             </div>
           </header>

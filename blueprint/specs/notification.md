@@ -1,233 +1,234 @@
-# Đặc tả: Hệ thống Thông báo (Extensible)
+Dưới đây là thiết kế mình đề xuất cho chức năng Thông báo sau khi đăng ký workshop thành công. Mình sẽ thiết kế bám theo luồng hiện tại của UniHub: khi registration chuyển sang confirmed, hệ thống đã có event RegistrationConfirmed, publish sau DB commit và phải at-most-once theo registration id. Đây là nền rất tốt để xây notification service.
 
-## Mô tả
+1. Mục tiêu thiết kế
 
-Gửi thông báo đến sinh viên qua nhiều kênh sau các sự kiện quan trọng (đăng ký thành công, workshop bị hủy, nhắc nhở sắp diễn ra). Hệ thống được thiết kế theo **Strategy Pattern** để dễ bổ sung kênh mới (Telegram, Zalo) mà không sửa business logic.
+Chức năng cần đảm bảo:
 
----
+1. Sau khi sinh viên đăng ký thành công, nhận thông báo qua:
+   - Web app / in-app notification
+   - Email
 
-## Luồng chính
+2. Không làm chậm hoặc phá vỡ luồng đăng ký.
+   Registration confirmed rồi thì notification gửi fail cũng không rollback registration.
 
-```
-Express Request Handler
-  │
-  ├── RegistrationService.create()
-  │   └── Registration saved successfully
-  │
-  ├── Enqueue vào Bull: notification_queue
-  │   └── Job: { type: 'registration_confirmed', user_id, registration_id }
-  │
-  └── Return response to client immediately
-  
+3. Không gửi trùng thông báo khi:
+   - user retry
+   - simulation confirm bị gọi lặp
+   - callback/payment success bị duplicate
+   - worker retry
 
-Bull Worker (async, separate process):
-  │
-  ├── Dequeue job
-  │
-  ├── Resolve channels (Email + In-App by default)
-  │
-  └── Execute channel handlers:
-        ├── EmailChannel.send()    → Resend API
-        ├── AppChannel.send()      → INSERT app_notifications
-        └── TelegramChannel.send() → Telegram Bot API (future)
-```
+4. Dễ thêm kênh mới như Telegram, SMS, Zalo trong học kỳ sau.
 
-**Pattern:** Producer/Consumer via Bull Queue (NOT pub/sub)
-- Producer (registration handler) enqueues job
-- Consumer (Bull worker) processes job
-- Retry logic built-in: fails → retry up to 3 times with exponential backoff
+5. Có khả năng retry khi email provider hoặc notification channel lỗi tạm thời.
 
-### Interface (mở rộng dễ dàng)
+Điểm quan trọng: registration/payment không nên gọi trực tiếp email/web notification service. Registration chỉ nên phát ra event RegistrationConfirmed. Notification module sẽ consume event và tự xử lý các kênh. Hiện spec đã yêu cầu event này dùng cho cả free và simulated-paid flow, với payload gồm registration_id, workshop_id, user_id, confirmed_at.
 
-```javascript
-// Base interface
-class NotificationChannel {
-  name = '';
-  async send(notification) {
-    throw new Error('Must implement send()');
+2. Kiến trúc tổng thể
+
+Đề xuất kiến trúc:
+
+Registration / Payment Module
+        |
+        | 1. DB transaction confirm registration
+        | 2. Insert/Publish RegistrationConfirmed after commit
+        v
+Event Bus / Queue / Outbox
+        |
+        v
+Notification Service
+        |
+        +--> InAppNotificationChannel
+        |
+        +--> EmailNotificationChannel
+        |
+        +--> TelegramNotificationChannel  (future)
+        |
+        +--> Other channels               (future)
+
+Luồng:
+
+1. Registration chuyển sang confirmed.
+2. QR được tạo.
+3. DB commit thành công.
+4. Emit event RegistrationConfirmed.
+5. Notification worker nhận event.
+6. Worker tạo notification jobs cho từng channel.
+7. Từng channel gửi độc lập.
+8. Gửi fail thì retry theo channel, không ảnh hưởng registration.
+
+Thiết kế này phù hợp với decision hiện có: confirmation event phải publish sau commit và dedupe theo registration id.
+3. Event đầu vào: RegistrationConfirmed
+
+Event contract nên giữ ổn định:
+
+{
+  "event_id": "evt_...",
+  "event_type": "RegistrationConfirmed",
+  "occurred_at": "2026-05-06T10:00:00Z",
+  "payload": {
+    "registration_id": "reg_123",
+    "workshop_id": "workshop_456",
+    "user_id": "user_789",
+    "confirmed_at": "2026-05-06T10:00:00Z"
   }
 }
 
-// Email channel (built-in)
-class EmailChannel extends NotificationChannel {
-  name = 'email';
-  async send(notification) {
-    const { user, subject, body, html } = notification;
-    await resend.emails.send({
-      from: 'noreply@unihub.edu.vn',
-      to: user.email,
-      subject,
-      html
+Payload tối thiểu đang được spec yêu cầu là:
+
+{
+  "registration_id": "string",
+  "workshop_id": "string",
+  "user_id": "string",
+  "confirmed_at": "string"
+}
+
+Mình khuyên không nhồi quá nhiều thông tin như workshop title, user email vào event. Notification service nên tự hydrate dữ liệu từ DB khi xử lý event. Lý do:
+
+- Tránh event quá lớn.
+- Tránh gửi dữ liệu cũ nếu workshop/user đổi thông tin.
+- Dễ thay đổi template mà không đổi event contract.
+
+Tuy nhiên, để tránh N+1 quá nặng, có thể thêm snapshot nhỏ sau này, nhưng MVP chưa cần.
+
+4. Nên dùng Outbox Pattern
+
+Vì bạn có yêu cầu “publish sau DB commit” và “không observable nếu transaction fail”, cách sạch nhất là Outbox Pattern.
+
+Trong transaction confirm registration
+
+Khi registration chuyển sang confirmed, cùng transaction insert:
+
+INSERT INTO outbox_events (
+  id,
+  event_type,
+  aggregate_id,
+  payload,
+  status,
+  created_at
+)
+VALUES (
+  gen_random_uuid(),
+  'RegistrationConfirmed',
+  :registration_id,
+  :payload,
+  'pending',
+  now()
+)
+ON CONFLICT DO NOTHING;
+
+Unique constraint:
+
+CREATE UNIQUE INDEX uq_outbox_registration_confirmed
+ON outbox_events(event_type, aggregate_id)
+WHERE event_type = 'RegistrationConfirmed';
+
+Vì spec yêu cầu duplicate simulation confirmation chỉ publish một event cho registration đó, unique key theo event_type + registration_id là phù hợp.
+
+Outbox worker
+
+Worker chạy định kỳ hoặc consume queue:
+
+1. Lấy outbox_events status = pending.
+2. Publish sang queue hoặc gọi NotificationService.handle(event).
+3. Nếu thành công: status = published.
+4. Nếu fail: retry later.
+
+Query gợi ý:
+
+SELECT *
+FROM outbox_events
+WHERE status = 'pending'
+ORDER BY created_at
+LIMIT 100
+FOR UPDATE SKIP LOCKED;
+5. Notification module nên tách thành 3 lớp
+Lớp 1: Event Consumer
+
+Nhận RegistrationConfirmed.
+
+class RegistrationConfirmedConsumer {
+  async handle(event: RegistrationConfirmedEvent) {
+    await notificationOrchestrator.handleRegistrationConfirmed(event);
+  }
+}
+
+Nhiệm vụ:
+
+- Validate event.
+- Dedupe event.
+- Tạo notification deliveries cho các kênh enabled.
+Lớp 2: Notification Orchestrator
+
+Quyết định event này cần gửi qua kênh nào.
+
+class NotificationOrchestrator {
+  constructor(
+    private readonly channelRegistry: NotificationChannelRegistry,
+    private readonly templateRenderer: NotificationTemplateRenderer,
+    private readonly deliveryRepo: NotificationDeliveryRepository,
+  ) {}
+
+  async handleRegistrationConfirmed(event: RegistrationConfirmedEvent) {
+    const context = await this.buildContext(event);
+
+    const channels = await this.channelRegistry.getEnabledChannels({
+      eventType: 'RegistrationConfirmed',
+      userId: event.payload.user_id,
     });
-  }
-}
 
-// App notification channel (built-in)
-class AppChannel extends NotificationChannel {
-  name = 'app';
-  async send(notification) {
-    const { user, title, body } = notification;
-    await db.query(
-      'INSERT INTO app_notifications (user_id, title, body, type) VALUES ($1, $2, $3, $4)',
-      [user.id, title, body, notification.type]
-    );
-  }
-}
-
-// Telegram channel (future - thêm mà không sửa code cũ)
-class TelegramChannel extends NotificationChannel {
-  name = 'telegram';
-  async send(notification) {
-    const { user, body } = notification;
-    if (!user.telegram_id) return; // Skip if user chưa connect Telegram
-    await telegramBot.sendMessage(user.telegram_id, body);
-  }
-}
-
-// Channel registry
-const channels = {
-  email: new EmailChannel(),
-  app: new AppChannel(),
-  // telegram: new TelegramChannel(), // uncomment to enable
-};
-```
-
-### Bull Queue Setup
-
-```javascript
-// src/queues/notificationQueue.js
-const Queue = require('bull');
-const redis = require('redis');
-
-const notificationQueue = new Queue('notifications', {
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379
-  }
-});
-
-// Worker: xử lý từng job
-notificationQueue.process(async (job) => {
-  const { type, user_id, data } = job.data;
-  
-  // Build notification object
-  const notification = buildNotification(type, user_id, data);
-  
-  // Execute channel handlers
-  for (const channel of notification.channels) {
-    try {
-      await channels[channel].send(notification);
-    } catch (err) {
-      console.error(`[Notification] ${channel} failed:`, err);
-      throw err; // Bull sẽ retry
+    for (const channel of channels) {
+      await this.deliveryRepo.createIfNotExists({
+        eventId: event.event_id,
+        eventType: event.event_type,
+        aggregateId: event.payload.registration_id,
+        userId: event.payload.user_id,
+        channel: channel.name,
+        status: 'pending',
+      });
     }
   }
-  
-  // Log success
-  await db.query(
-    'INSERT INTO notification_logs (user_id, channel, type, status) VALUES ($1, $2, $3, $4)',
-    [user_id, notification.channels.join(','), type, 'sent']
-  );
-});
+}
+Lớp 3: Channel Adapter
 
-// Retry config: 3 times, exponential backoff
-notificationQueue.on('failed', (job, err) => {
-  console.error(`Job ${job.id} failed:`, err);
-});
+Mỗi kênh là một adapter riêng:
 
-module.exports = notificationQueue;
-```
+interface NotificationChannel {
+  name: NotificationChannelName;
 
-### Sử dụng trong registration route
+  send(input: SendNotificationInput): Promise<SendNotificationResult>;
+}
 
-```javascript
-// src/routes/registrations.js
-const express = require('express');
-const notificationQueue = require('../queues/notificationQueue');
-const db = require('../db/pool');
+Ví dụ:
 
-router.post('/registrations', authMiddleware, async (req, res) => {
-  const { workshop_id } = req.body;
-  const user = req.user;
-  
-  try {
-    // 1. Create registration
-    const registration = await createRegistration(workshop_id, user.id);
-    
-    // 2. Enqueue notification (non-blocking)
-    await notificationQueue.add({
-      type: 'registration_confirmed',
-      user_id: user.id,
-      data: {
-        registration_id: registration.id,
-        workshop_id,
-        qr_code: registration.qr_code
-      }
-    }, {
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 2000 // 2s, 5s, 30s
-      },
-      removeOnComplete: true
-    });
-    
-    // 3. Return to client immediately
-    res.status(201).json({
-      registration_id: registration.id,
-      qr_code: registration.qr_code
-    });
-    
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+class InAppNotificationChannel implements NotificationChannel {
+  name = 'in_app';
+
+  async send(input: SendNotificationInput) {
+    // Insert/read model for web notification
   }
-});
-```
+}
 
----
+class EmailNotificationChannel implements NotificationChannel {
+  name = 'email';
 
-## Kịch bản lỗi
+  async send(input: SendNotificationInput) {
+    // Send via SMTP/Resend/SendGrid/etc.
+  }
+}
 
-### E1: Email provider timeout hoac fail tam thoi
+class TelegramNotificationChannel implements NotificationChannel {
+  name = 'telegram';
 
-- Worker ghi nhan job that bai va de Bull retry toi da 3 lan voi exponential backoff.
-- API dang ky van tra response thanh cong vi thong bao chay bat dong bo.
+  async send(input: SendNotificationInput) {
+    // Future: call Telegram Bot API
+  }
+}
 
-### E2: Kenh thong bao moi duoc bat nhung nguoi dung chua lien ket tai khoan
+Muốn thêm Telegram sau này thì chỉ cần:
 
-- Channel handler bo qua nguoi dung khong du dieu kien, ghi log canh bao.
-- Cac kenh con lai van gui binh thuong, khong lam fail ca job.
+1. Thêm TelegramNotificationChannel.
+2. Thêm user notification preference / telegram_chat_id nếu cần.
+3. Register channel vào registry.
+4. Thêm template telegram.
 
-### E3: Notification log ghi DB that bai sau khi gui thanh cong
-
-- Worker retry buoc ghi log.
-- Neu van that bai sau retry, he thong canh bao qua monitoring nhung khong gui lai thong bao de tranh duplicate.
-
-## Các loại thông báo
-
-| Event | Kênh | Nội dung |
-|-------|------|---------|
-| Đăng ký thành công (free) | Email + App | Xác nhận + QR code |
-| Đăng ký thành công (paid) | Email + App | Xác nhận + QR code + receipt |
-| Workshop bị hủy | Email + App | Thông báo hủy + lý do |
-| Workshop đổi phòng/giờ | Email + App | Thông tin mới |
-| Nhắc nhở (1 ngày trước) | App | "Workshop X diễn ra ngày mai" |
-| Thanh toán thất bại | Email + App | "Thanh toán thất bại, vui lòng thử lại" |
-
----
-
-## Ràng buộc
-
-- **Async:** Tất cả thông báo qua BullMQ queue — không block response chính.
-- **Retry:** 3 lần với exponential backoff (1s, 5s, 30s) khi fail.
-- **Log:** Mọi notification được log vào `notification_logs` table (audit trail).
-- **Extensible:** Thêm kênh Telegram: implement `NotificationChannel`, register vào DI container, không cần sửa `NotificationService`.
-
----
-
-## Tiêu chí chấp nhận
-
-- [ ] Email xác nhận gửi trong < 30 giây sau đăng ký thành công.
-- [ ] App notification hiển thị trong < 5 giây (polling mỗi 10s hoặc WebSocket).
-- [ ] Khi Resend API fail: retry 3 lần, sau đó log lỗi và tiếp tục (không crash).
-- [ ] Thêm TelegramChannel: chỉ cần tạo class mới, không sửa file nào khác.
+Không cần sửa registration/payment core.
