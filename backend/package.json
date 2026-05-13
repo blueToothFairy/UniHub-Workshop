@@ -14,6 +14,9 @@
     "test:payment:contracts": "tsx scripts/test_payment_callback_integration.ts",
     "test:payment:contention": "tsx scripts/test_paid_flow_contention.ts",
     "test:payment:circuit-breaker": "tsx scripts/test_payment_circuit_breaker_integration.ts",
+    "test:peak:rehearsal": "tsx scripts/test_peak_controller_rehearsal.ts",
+    "test:peak:e2e": "tsx scripts/test_peak_controller_e2e.ts",
+    "test:peak:scale": "tsx scripts/test_peak_controller_scale_e2e.ts",
     "test:notification:unit": "tsx --test src/modules/notification/notification.service.test.ts",
     "test:notification:integration": "tsx --test src/modules/notification/notification.router.test.ts src/modules/registration/registration.notification-enqueue.test.ts",
     "test:notification:worker": "tsx --test src/modules/notification/notification.service.test.ts"

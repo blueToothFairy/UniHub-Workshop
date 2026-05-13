@@ -15,6 +15,7 @@ import type {
   PaymentStatusResponse,
   RegistrationQrResponse
 } from "./registration.types.js";
+import type { IPeakAdmissionService } from "./peak-admission.types.js";
 
 type RegistrationStatus = "pending_payment" | "confirmed" | "cancelled" | "expired";
 
@@ -74,6 +75,7 @@ interface RegistrationServiceOptions {
   momoAdapter?: IMomoAdapter;
   paymentGatewayMode?: "momo_sandbox" | "simulation";
   paymentCircuitBreaker?: IPaymentCircuitBreaker;
+  peakAdmissionService?: IPeakAdmissionService;
   reservationTtlMinutes?: number;
   now?: () => Date;
 }
@@ -84,6 +86,7 @@ export class RegistrationService {
   private readonly momoAdapter?: IMomoAdapter;
   private readonly paymentGatewayMode: "momo_sandbox" | "simulation";
   private readonly paymentCircuitBreaker?: IPaymentCircuitBreaker;
+  private readonly peakAdmissionService?: IPeakAdmissionService;
   private readonly reservationTtlMinutes: number;
   private readonly now: () => Date;
 
@@ -94,6 +97,7 @@ export class RegistrationService {
     this.momoAdapter = options.momoAdapter;
     this.paymentGatewayMode = options.paymentGatewayMode ?? "momo_sandbox";
     this.paymentCircuitBreaker = options.paymentCircuitBreaker;
+    this.peakAdmissionService = options.peakAdmissionService;
     this.reservationTtlMinutes = options.reservationTtlMinutes ?? 10;
     this.now = options.now ?? (() => new Date());
   }
@@ -102,7 +106,14 @@ export class RegistrationService {
     workshopId: string;
     userId: string;
     idempotencyKey: string;
+    admissionToken?: string | null;
   }): Promise<CreateRegistrationResponse> {
+    await this.peakAdmissionService?.validateRegistrationAttempt({
+      workshopId: params.workshopId,
+      userId: params.userId,
+      admissionToken: params.admissionToken ?? null
+    });
+
     await this.expireStaleRegistrations();
     const requestHash = this.computeRequestHash(params.userId, params.workshopId);
 

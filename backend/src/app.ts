@@ -18,6 +18,8 @@ import { AiSummaryWorker } from "./workers/ai-summary.worker.js";
 import { CloudinaryPdfStorage } from "./modules/ai-summary/cloudinary-pdf.storage.js";
 import { createRegistrationRouter } from "./modules/registration/registration.router.js";
 import { RegistrationService } from "./modules/registration/registration.service.js";
+import { PeakAdmissionService } from "./modules/registration/peak-admission.service.js";
+import { loadPeakControllerConfig } from "./modules/registration/peak-controller.config.js";
 import { MomoAdapter } from "./modules/payment/momo.adapter.js";
 import { createPaymentRouter } from "./modules/payment/payment.router.js";
 import { Redis } from "ioredis";
@@ -30,10 +32,11 @@ import { EmailNotificationChannel } from "./modules/notification/channels/email.
 import { RegistrationConfirmedWorker } from "./workers/registration-confirmed.worker.js";
 import { NotificationDeliveryWorker } from "./workers/notification-delivery.worker.js";
 import { createNotificationRouter } from "./modules/notification/notification.router.js";
+import { createWorkshopPeakRouter } from "./modules/registration/workshop-peak.router.js";
 
 const app: Express = express();
 const allowedOrigins: string[] = (process.env.ALLOWED_ORIGINS ?? "http://localhost:3001").split(",").map((s) => s.trim());
-const allowedHeaders: string[] = ["Authorization", "Content-Type", "Accept", "Idempotency-Key"];
+const allowedHeaders: string[] = ["Authorization", "Content-Type", "Accept", "Idempotency-Key", "Admission-Token"];
 const database: PgDatabase = new PgDatabase();
 const redisUrl = process.env.REDIS_URL ?? "";
 if (!redisUrl) {
@@ -41,6 +44,9 @@ if (!redisUrl) {
 }
 const queue = new BullMqQueue(redisUrl);
 const circuitBreakerRedis = new Redis(redisUrl, { maxRetriesPerRequest: null });
+const peakControlRedis = new Redis(redisUrl, { maxRetriesPerRequest: null });
+const peakControlConfig = loadPeakControllerConfig();
+const peakAdmissionService = new PeakAdmissionService(peakControlRedis, peakControlConfig);
 
 const workshopSummaryRepository = new WorkshopSummaryRepository(database);
 const aiSummaryService = new AiSummaryService(workshopSummaryRepository, new CloudinaryPdfStorage(), new GeminiSummarizer(), queue);
@@ -63,6 +69,7 @@ const momoAdapter = new MomoAdapter({
 const registrationService = new RegistrationService(queue, {
   momoAdapter,
   paymentGatewayMode: (process.env.PAYMENT_GATEWAY_MODE === "simulation" ? "simulation" : "momo_sandbox"),
+  peakAdmissionService,
   paymentCircuitBreaker: new PaymentCircuitBreaker(
     new RedisPaymentCircuitBreakerStore(circuitBreakerRedis),
     {
@@ -106,6 +113,7 @@ app.get("/health", (_req, res) => {
 app.use("/auth", createAuthRouter(authService));
 app.use("/admin", authenticate, authorize(["organizer"]), createAdminRouter(adminService));
 app.use("/workshops", createWorkshopRouter(workshopService));
+app.use("/workshops", authenticate, authorize(["student"]), createWorkshopPeakRouter(peakAdmissionService));
 app.use("/registrations", authenticate, authorize(["student"]), createRegistrationRouter(registrationService));
 app.use("/notifications", authenticate, authorize(["student"]), createNotificationRouter(notificationService));
 app.use("/payments", createPaymentRouter(registrationService));

@@ -3,6 +3,7 @@ import { AppError } from "../../shared/errors/AppError.js";
 import type { RegistrationService } from "./registration.service.js";
 import type { CreateRegistrationRequest } from "./registration.types.js";
 import { PaymentGatewayUnavailableError } from "../payment/payment-circuit-breaker.service.js";
+import { RetryAfterAppError } from "./peak-admission.service.js";
 
 export function createRegistrationRouter(registrationService: RegistrationService): Router {
   const router = Router();
@@ -20,7 +21,8 @@ export function createRegistrationRouter(registrationService: RegistrationServic
       const data = await registrationService.createRegistration({
         workshopId: payload.workshop_id,
         userId: req.user!.sub,
-        idempotencyKey
+        idempotencyKey,
+        admissionToken: typeof req.headers["admission-token"] === "string" ? req.headers["admission-token"] : null
       });
       if (data.registration_status === "confirmed") {
         res.status(201).json({ data });
@@ -72,6 +74,21 @@ export function createRegistrationRouter(registrationService: RegistrationServic
 }
 
 function handleError(error: unknown, res: Response): void {
+  if (error instanceof RetryAfterAppError) {
+    if (error.code === "REGISTRATION_BUSY") {
+      res.status(error.statusCode).json({
+        error: error.code,
+        message: error.message,
+        retry_after: error.retryAfterSeconds
+      });
+      return;
+    }
+    res.status(error.statusCode).json({
+      error: { code: error.code, message: error.message },
+      retry_after: error.retryAfterSeconds
+    });
+    return;
+  }
   if (error instanceof PaymentGatewayUnavailableError) {
     res.status(error.statusCode).json({
       error: error.code,
