@@ -9,7 +9,7 @@ import { authenticate } from "./modules/auth/auth.middleware.js";
 import { createWorkshopRouter } from "./modules/workshop/workshop.router.js";
 import { WorkshopService } from "./modules/workshop/workshop.service.js";
 import { authorize } from "./shared/middleware/authorize.js";
-import { BullMqQueue } from "./shared/infra/queue.js";
+import { BullMqQueue, QueueStub } from "./shared/infra/queue.js";
 import { PgDatabase } from "./shared/infra/pgDatabase.js";
 import { WorkshopSummaryRepository } from "./modules/ai-summary/ai-summary.repository.js";
 import { GeminiSummarizer } from "./modules/ai-summary/gemini.summarizer.js";
@@ -22,7 +22,11 @@ import { MomoAdapter } from "./modules/payment/momo.adapter.js";
 import { createPaymentRouter } from "./modules/payment/payment.router.js";
 import { Redis } from "ioredis";
 import { PaymentCircuitBreaker } from "./modules/payment/payment-circuit-breaker.service.js";
-import { RedisPaymentCircuitBreakerStore } from "./modules/payment/payment-circuit-breaker.store.js";
+import {
+  InMemoryPaymentCircuitBreakerStore,
+  type IPaymentCircuitBreakerStore,
+  RedisPaymentCircuitBreakerStore
+} from "./modules/payment/payment-circuit-breaker.store.js";
 import { NotificationRepository } from "./modules/notification/notification.repository.js";
 import { NotificationService } from "./modules/notification/notification.service.js";
 import { InAppNotificationChannel } from "./modules/notification/channels/inapp.channel.js";
@@ -30,6 +34,7 @@ import { EmailNotificationChannel } from "./modules/notification/channels/email.
 import { RegistrationConfirmedWorker } from "./workers/registration-confirmed.worker.js";
 import { NotificationDeliveryWorker } from "./workers/notification-delivery.worker.js";
 import { createNotificationRouter } from "./modules/notification/notification.router.js";
+import type { IQueue } from "./shared/interfaces/IQueue.js";
 
 import { CheckinService } from "./modules/checkin/checkin.service.js";
 import { createCheckinRouter } from "./modules/checkin/checkin.router.js";
@@ -39,16 +44,35 @@ const allowedOrigins: string[] = (process.env.ALLOWED_ORIGINS ?? "http://localho
 const allowedHeaders: string[] = ["Authorization", "Content-Type", "Accept", "Idempotency-Key"];
 const database: PgDatabase = new PgDatabase();
 const redisUrl = process.env.REDIS_URL ?? "";
-if (!redisUrl) {
-  throw new Error("REDIS_URL is required for BullMQ queue");
+const shouldStartWorkers: boolean = (process.env.START_WORKERS ?? (process.env.NODE_ENV === "production" ? "true" : "false")) === "true";
+const shouldUseRedis: boolean = (process.env.USE_REDIS ?? (shouldStartWorkers ? "true" : "false")) === "true";
+
+if (shouldUseRedis && !redisUrl) {
+  throw new Error("REDIS_URL is required when USE_REDIS=true or START_WORKERS=true");
 }
-const queue = new BullMqQueue(redisUrl);
-const circuitBreakerRedis = new Redis(redisUrl, { maxRetriesPerRequest: null });
+
+let queue: IQueue;
+let paymentCircuitBreakerStore: IPaymentCircuitBreakerStore;
+
+if (shouldUseRedis) {
+  queue = new BullMqQueue(redisUrl);
+  const circuitBreakerRedis = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  circuitBreakerRedis.on("error", (error: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error("[payment-circuit-breaker] redis error", error instanceof Error ? error.message : error);
+  });
+  paymentCircuitBreakerStore = new RedisPaymentCircuitBreakerStore(circuitBreakerRedis);
+} else {
+  queue = new QueueStub();
+  paymentCircuitBreakerStore = new InMemoryPaymentCircuitBreakerStore();
+}
 
 const workshopSummaryRepository = new WorkshopSummaryRepository(database);
 const aiSummaryService = new AiSummaryService(workshopSummaryRepository, new CloudinaryPdfStorage(), new GeminiSummarizer(), queue);
 const aiSummaryWorker = new AiSummaryWorker(aiSummaryService);
-queue.startAiSummaryWorker((payload) => aiSummaryWorker.consume(payload));
+if (shouldStartWorkers && queue instanceof BullMqQueue) {
+  queue.startAiSummaryWorker((payload) => aiSummaryWorker.consume(payload));
+}
 
 const adminService: AdminService = new AdminService(queue, database, aiSummaryService);
 const authService: AuthService = new AuthService(database);
@@ -67,7 +91,7 @@ const registrationService = new RegistrationService(queue, {
   momoAdapter,
   paymentGatewayMode: (process.env.PAYMENT_GATEWAY_MODE === "simulation" ? "simulation" : "momo_sandbox"),
   paymentCircuitBreaker: new PaymentCircuitBreaker(
-    new RedisPaymentCircuitBreakerStore(circuitBreakerRedis),
+    paymentCircuitBreakerStore,
     {
       config: {
         failureThreshold: Number(process.env.PAYMENT_CIRCUIT_FAILURE_THRESHOLD ?? 5),
@@ -89,8 +113,15 @@ const notificationService = new NotificationService(
 );
 const registrationConfirmedWorker = new RegistrationConfirmedWorker(notificationService);
 const notificationDeliveryWorker = new NotificationDeliveryWorker(notificationService);
-queue.startRegistrationConfirmedWorker((payload) => registrationConfirmedWorker.consume(payload));
-queue.startNotificationDeliveryWorker((payload) => notificationDeliveryWorker.consume(payload));
+if (queue instanceof QueueStub) {
+  queue.setAiSummaryHandler((payload) => aiSummaryWorker.consume(payload));
+  queue.setRegistrationConfirmedHandler((payload) => registrationConfirmedWorker.consume(payload));
+  queue.setNotificationDeliveryHandler((payload) => notificationDeliveryWorker.consume(payload));
+}
+if (shouldStartWorkers && queue instanceof BullMqQueue) {
+  queue.startRegistrationConfirmedWorker((payload) => registrationConfirmedWorker.consume(payload));
+  queue.startNotificationDeliveryWorker((payload) => notificationDeliveryWorker.consume(payload));
+}
 const checkinService = new CheckinService(database);
 
 app.use(
@@ -119,4 +150,12 @@ const port: number = Number(process.env.PORT ?? 3000);
 app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(`Backend API listening on :${port}`);
+  if (!shouldUseRedis) {
+    // eslint-disable-next-line no-console
+    console.log("Redis disabled; using in-memory queue and payment circuit breaker state.");
+  }
+  if (!shouldStartWorkers) {
+    // eslint-disable-next-line no-console
+    console.log("Workers disabled (set START_WORKERS=true to enable BullMQ workers).");
+  }
 });

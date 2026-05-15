@@ -24,11 +24,17 @@ function formatStamp(iso: string | null | undefined): string | undefined {
 }
 
 export function buildCheckedInCard(response: MobileCheckinScanResponse): StaffResultCard {
+  const studentLabel = response.student_name
+    ? `${response.student_name}${response.student_id ? ` (${response.student_id})` : ""}`
+    : response.student_id
+      ? response.student_id
+      : `Registration ${response.registration_id}`;
+
   if (response.result === "checked_in") {
     return {
       tone: "success",
       title: "Checked in",
-      detail: `Registration ${response.registration_id} was accepted for workshop ${response.workshop_id}.`,
+      detail: `${studentLabel} was accepted for workshop ${response.workshop_id}.`,
       stamp: formatStamp(response.checked_in_at)
     };
   }
@@ -36,7 +42,7 @@ export function buildCheckedInCard(response: MobileCheckinScanResponse): StaffRe
   return {
     tone: "warning",
     title: "Already checked in",
-    detail: `Registration ${response.registration_id} was already recorded for workshop ${response.workshop_id}.`,
+    detail: `${studentLabel} was already recorded for workshop ${response.workshop_id}.`,
     stamp: formatStamp(response.checked_in_at)
   };
 }
@@ -58,6 +64,12 @@ export function buildDomainErrorCard(code: string, message: string): StaffResult
   };
 
   switch (code) {
+    case "NETWORK_ERROR":
+      return {
+        tone: "warning",
+        title: "Cannot reach backend",
+        detail: message
+      };
     case "INVALID_QR_TOKEN":
       return { tone: "error", title: "Invalid QR", detail: "This QR code is invalid or expired." };
     case "WORKSHOP_MISMATCH":

@@ -14,6 +14,8 @@ import type {
 interface CheckinCandidateRow {
   registration_id: string;
   registration_user_id: string;
+  student_name: string | null;
+  student_id: string | null;
   registration_workshop_id: string;
   registration_status: "pending_payment" | "confirmed" | "cancelled" | "expired";
   workshop_status: "draft" | "published" | "cancelled";
@@ -24,6 +26,8 @@ interface CheckinReplayRow {
   registration_id: string;
   workshop_id: string;
   checked_in_at: Date;
+  student_name: string | null;
+  student_id: string | null;
 }
 
 interface InsertCheckinRow {
@@ -45,7 +49,14 @@ export class CheckinService {
     this.assertCandidate(candidate, payload, input.workshopId);
 
     if (candidate.checked_in_at) {
-      return this.toScanResponse("already_checked_in", candidate.registration_id, candidate.registration_workshop_id, candidate.checked_in_at);
+      return this.toScanResponse(
+        "already_checked_in",
+        candidate.registration_id,
+        candidate.registration_workshop_id,
+        candidate.student_name,
+        candidate.student_id,
+        candidate.checked_in_at
+      );
     }
 
     const inserted = await this.insertCheckin({
@@ -57,14 +68,28 @@ export class CheckinService {
     });
 
     if (inserted) {
-      return this.toScanResponse("checked_in", candidate.registration_id, candidate.registration_workshop_id, inserted.checked_in_at);
+      return this.toScanResponse(
+        "checked_in",
+        candidate.registration_id,
+        candidate.registration_workshop_id,
+        candidate.student_name,
+        candidate.student_id,
+        inserted.checked_in_at
+      );
     }
 
     const existing = await this.getPersistedCheckin(candidate.registration_id);
     if (!existing) {
       throw new AppError(500, "CHECKIN_WRITE_FAILED", "Attendance record could not be persisted");
     }
-    return this.toScanResponse("already_checked_in", existing.registration_id, existing.workshop_id, existing.checked_in_at);
+    return this.toScanResponse(
+      "already_checked_in",
+      existing.registration_id,
+      existing.workshop_id,
+      existing.student_name,
+      existing.student_id,
+      existing.checked_in_at
+    );
   }
 
   public async sync(input: {
@@ -99,6 +124,8 @@ export class CheckinService {
         result: "checked_in",
         registration_id: replay.registration_id,
         checked_in_at: replay.checked_in_at.toISOString(),
+        student_name: replay.student_name,
+        student_id: replay.student_id,
         error_code: null
       };
     }
@@ -128,6 +155,8 @@ export class CheckinService {
           result: "already_checked_in",
           registration_id: candidate.registration_id,
           checked_in_at: candidate.checked_in_at.toISOString(),
+          student_name: candidate.student_name,
+          student_id: candidate.student_id,
           error_code: null
         };
       }
@@ -149,6 +178,8 @@ export class CheckinService {
           result: "checked_in",
           registration_id: candidate.registration_id,
           checked_in_at: inserted.checked_in_at.toISOString(),
+          student_name: candidate.student_name,
+          student_id: candidate.student_id,
           error_code: null
         };
       }
@@ -163,6 +194,8 @@ export class CheckinService {
         result: "already_checked_in",
         registration_id: existing.registration_id,
         checked_in_at: existing.checked_in_at.toISOString(),
+        student_name: existing.student_name,
+        student_id: existing.student_id,
         error_code: null
       };
     } catch (error) {
@@ -178,11 +211,14 @@ export class CheckinService {
       `SELECT
          r.id AS registration_id,
          r.user_id AS registration_user_id,
+         u.full_name AS student_name,
+         u.student_id AS student_id,
          r.workshop_id AS registration_workshop_id,
          r.status AS registration_status,
          w.status AS workshop_status,
          wc.checked_in_at AS checked_in_at
        FROM registrations r
+       JOIN users u ON u.id = r.user_id
        JOIN workshops w ON w.id = r.workshop_id
        LEFT JOIN workshop_checkins wc ON wc.registration_id = r.id
        WHERE r.id=$1
@@ -229,9 +265,16 @@ export class CheckinService {
 
   private async getReplayByDevice(actorUserId: string, deviceId: string, deviceScanId: string): Promise<CheckinReplayRow | null> {
     const result = await this.database.query<CheckinReplayRow>(
-      `SELECT registration_id, workshop_id, checked_in_at
-       FROM workshop_checkins
-       WHERE checked_in_by=$1 AND device_id=$2 AND device_scan_id=$3
+      `SELECT
+         wc.registration_id,
+         wc.workshop_id,
+         wc.checked_in_at,
+         u.full_name AS student_name,
+         u.student_id AS student_id
+       FROM workshop_checkins wc
+       JOIN registrations r ON r.id = wc.registration_id
+       JOIN users u ON u.id = r.user_id
+       WHERE wc.checked_in_by=$1 AND wc.device_id=$2 AND wc.device_scan_id=$3
        LIMIT 1`,
       [actorUserId, deviceId, deviceScanId]
     );
@@ -240,9 +283,16 @@ export class CheckinService {
 
   private async getPersistedCheckin(registrationId: string): Promise<CheckinReplayRow | null> {
     const result = await this.database.query<CheckinReplayRow>(
-      `SELECT registration_id, workshop_id, checked_in_at
-       FROM workshop_checkins
-       WHERE registration_id=$1
+      `SELECT
+         wc.registration_id,
+         wc.workshop_id,
+         wc.checked_in_at,
+         u.full_name AS student_name,
+         u.student_id AS student_id
+       FROM workshop_checkins wc
+       JOIN registrations r ON r.id = wc.registration_id
+       JOIN users u ON u.id = r.user_id
+       WHERE wc.registration_id=$1
        LIMIT 1`,
       [registrationId]
     );
@@ -303,12 +353,16 @@ export class CheckinService {
     result: "checked_in" | "already_checked_in",
     registrationId: string,
     workshopId: string,
+    studentName: string | null,
+    studentId: string | null,
     checkedInAt: Date
   ): CheckinScanResponse {
     return {
       result,
       registration_id: registrationId,
       workshop_id: workshopId,
+      student_name: studentName,
+      student_id: studentId,
       checked_in_at: checkedInAt.toISOString()
     };
   }
@@ -319,6 +373,8 @@ export class CheckinService {
       result,
       registration_id: null,
       checked_in_at: null,
+      student_name: null,
+      student_id: null,
       error_code: errorCode
     };
   }

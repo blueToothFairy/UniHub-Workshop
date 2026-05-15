@@ -1,4 +1,10 @@
-const API_BASE_URL: string = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+function normalizeApiBaseUrl(value: string): string {
+  return value.trim().replace(/\/+$/, "");
+}
+
+const API_BASE_URL: string = normalizeApiBaseUrl(
+  process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:3000"
+);
 
 interface ApiErrorBody {
   error?: { code?: string; message?: string };
@@ -63,6 +69,8 @@ export interface MobileCheckinScanResponse {
   result: MobileCheckinScanResult;
   registration_id: string;
   workshop_id: string;
+  student_name: string | null;
+  student_id: string | null;
   checked_in_at: string;
 }
 
@@ -79,6 +87,8 @@ export interface MobileCheckinSyncItemResponse {
   result: MobileCheckinSyncResult;
   registration_id: string | null;
   checked_in_at: string | null;
+  student_name: string | null;
+  student_id: string | null;
   error_code: string | null;
 }
 
@@ -86,8 +96,52 @@ export interface MobileCheckinSyncResponse {
   results: MobileCheckinSyncItemResponse[];
 }
 
+export interface WorkshopListItem {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  location?: string | null;
+  status: string;
+}
+
+export interface WorkshopListResponse {
+  workshops: WorkshopListItem[];
+  stats?: unknown;
+}
+
+export type RosterRegistrationStatus = "confirmed" | "cancelled" | "expired";
+
+export interface MobileWorkshopRosterEntry {
+  registration_id: string;
+  student_user_id: string;
+  student_name: string;
+  student_id: string | null;
+  registration_status: RosterRegistrationStatus;
+}
+
+export interface MobileWorkshopRosterResponse {
+  workshop_id: string;
+  server_time: string;
+  roster: MobileWorkshopRosterEntry[];
+}
+
+export interface CancelledRegistrationEntry {
+  registration_id: string;
+  cancelled_at: string;
+}
+
+export interface MobileCancelledSinceResponse {
+  cancelled: CancelledRegistrationEntry[];
+  server_time: string;
+}
+
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
+}
+
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
 }
 
 async function readBody(response: Response): Promise<unknown> {
@@ -132,13 +186,31 @@ async function parseDataEnvelope<T>(response: Response): Promise<T> {
 }
 
 async function requestRaw<T>(path: string, init: RequestInit): Promise<T> {
-  const response: Response = await fetch(`${API_BASE_URL}${path}`, init);
+  const response: Response = await performFetch(path, init);
   return parseRawResponse<T>(response);
 }
 
 async function requestData<T>(path: string, init: RequestInit): Promise<T> {
-  const response: Response = await fetch(`${API_BASE_URL}${path}`, init);
+  const response: Response = await performFetch(path, init);
   return parseDataEnvelope<T>(response);
+}
+
+async function performFetch(path: string, init: RequestInit): Promise<Response> {
+  const url = `${API_BASE_URL}${path}`;
+
+  try {
+    return await fetch(url, init);
+  } catch (error: unknown) {
+    const reason = error instanceof Error && error.message
+      ? error.message
+      : "Network request failed";
+
+    throw new ApiError(
+      0,
+      "NETWORK_ERROR",
+      `Unable to reach backend at ${url}. ${reason}`
+    );
+  }
 }
 
 export const authApi = {
@@ -179,5 +251,42 @@ export const checkinApi = {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({ items })
+    }),
+  getRoster: (token: string, workshopId: string, after?: string): Promise<MobileWorkshopRosterResponse> => {
+    const params = new URLSearchParams({ workshop_id: workshopId });
+    if (after) {
+      params.set("after", after);
+    }
+    return requestData<MobileWorkshopRosterResponse>(`/checkin/roster?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+  },
+  getCancelledSince: (token: string, after?: string): Promise<MobileCancelledSinceResponse> => {
+    const params = new URLSearchParams();
+    if (after) {
+      params.set("after", after);
+    }
+    const suffix = params.toString();
+    return requestData<MobileCancelledSinceResponse>(`/checkin/cancelled-since${suffix ? `?${suffix}` : ""}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+  }
+};
+
+export const workshopApi = {
+  listWorkshops: (): Promise<WorkshopListResponse> =>
+    requestData<WorkshopListResponse>("/workshops", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
     })
 };

@@ -26,6 +26,10 @@ export class BullMqQueue implements IQueue {
 
   public constructor(redisUrl: string) {
     this.connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    this.connection.on("error", (error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error("[bullmq] redis connection error", error instanceof Error ? error.message : error);
+    });
     this.aiSummaryQueue = new Queue<AiSummaryJobPayload>(AI_SUMMARY_QUEUE_NAME, { connection: this.connection });
     this.registrationConfirmedQueue = new Queue<RegistrationConfirmedQueuePayload>(REGISTRATION_CONFIRMED_QUEUE_NAME, { connection: this.connection });
     this.notificationDeliveryQueue = new Queue<NotificationDeliveryQueuePayload>(NOTIFICATION_DELIVERY_QUEUE_NAME, { connection: this.connection });

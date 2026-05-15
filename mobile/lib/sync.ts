@@ -2,7 +2,6 @@ import { checkinApi, type MobileCheckinSyncItemRequest, type MobileCheckinSyncIt
 import {
   appendSyncLog,
   listPendingCheckins,
-  markCheckinsConflict,
   markCheckinsSynced,
   markPendingCheckinsRetained,
   type StoredCheckinRecord
@@ -37,6 +36,14 @@ function isConflictResult(result: MobileCheckinSyncItemResponse["result"]): bool
 let syncPendingCheckinsInFlight: Promise<SyncPendingCheckinsResult> | null = null;
 
 export async function syncPendingCheckins(token: string, chunkSize = 25): Promise<SyncPendingCheckinsResult> {
+  return syncPendingCheckinsWithStaffCode(token, null, chunkSize);
+}
+
+export async function syncPendingCheckinsWithStaffCode(
+  token: string,
+  staffCode: string | null,
+  chunkSize = 25
+): Promise<SyncPendingCheckinsResult> {
   if (syncPendingCheckinsInFlight) {
     return syncPendingCheckinsInFlight;
   }
@@ -53,15 +60,15 @@ export async function syncPendingCheckins(token: string, chunkSize = 25): Promis
       const conflicts = response.results.filter((result) => isConflictResult(result.result));
       const retained = response.results.filter((result) => !isSyncedResult(result.result) && !isConflictResult(result.result));
 
-      await markCheckinsSynced(synced.map((item) => ({ device_scan_id: item.device_scan_id, result: item })));
-      await markCheckinsConflict(
-        conflicts.map((item) => ({ device_scan_id: item.device_scan_id, result: item, error_code: item.error_code }))
+      await markCheckinsSynced(
+        [...synced, ...conflicts].map((item) => ({ device_scan_id: item.device_scan_id, result: item }))
       );
       await markPendingCheckinsRetained(
         retained.map((item) => ({ device_scan_id: item.device_scan_id, result: item, error_code: item.error_code }))
       );
       await appendSyncLog({
         synced_at: new Date().toISOString(),
+        staff_code: staffCode,
         records_sent: pending.length,
         records_ok: synced.length,
         records_conflict: conflicts.length,
@@ -82,6 +89,7 @@ export async function syncPendingCheckins(token: string, chunkSize = 25): Promis
     } catch (error) {
       await appendSyncLog({
         synced_at: new Date().toISOString(),
+        staff_code: staffCode,
         records_sent: pending.length,
         records_ok: 0,
         records_conflict: 0,

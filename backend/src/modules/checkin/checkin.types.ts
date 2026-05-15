@@ -17,6 +17,8 @@ export interface CheckinScanResponse {
   result: CheckinScanResult;
   registration_id: string;
   workshop_id: string;
+  student_name: string | null;
+  student_id: string | null;
   checked_in_at: string;
 }
 
@@ -37,6 +39,8 @@ export interface CheckinSyncItemResponse {
   result: CheckinSyncResult;
   registration_id: string | null;
   checked_in_at: string | null;
+  student_name: string | null;
+  student_id: string | null;
   error_code: string | null;
 }
 
