@@ -119,11 +119,44 @@ export interface NotificationMarkReadResponse {
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
-  const body: unknown = await response.json();
-  if (!response.ok) {
-    throw toApiRequestError(response.status, body);
+  // 204/205 intentionally have no body (e.g., update/override endpoints).
+  if (response.status === 204 || response.status === 205) {
+    return undefined as T;
   }
-  return (body as { data: T }).data;
+
+  const rawBody: string = await response.text();
+  const hasBody: boolean = rawBody.trim().length > 0;
+
+  let body: unknown = {};
+  if (hasBody) {
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      throw new ApiRequestError({
+        code: "INVALID_RESPONSE_FORMAT",
+        message: "Server returned a non-JSON response",
+        statusCode: response.status
+      });
+    }
+  }
+
+  if (!response.ok) {
+    throw toApiRequestError(response.status, body ?? {});
+  }
+
+  if (!hasBody) {
+    return undefined as T;
+  }
+
+  const wrapped = body as { data?: T };
+  if (!("data" in wrapped)) {
+    throw new ApiRequestError({
+      code: "INVALID_RESPONSE_FORMAT",
+      message: "Server response is missing the data field",
+      statusCode: response.status
+    });
+  }
+  return wrapped.data as T;
 }
 
 function toApiRequestError(statusCode: number, body: unknown): ApiRequestError {
