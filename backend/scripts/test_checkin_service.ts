@@ -57,13 +57,31 @@ class CheckinDatabaseStub implements IDatabase {
       } as QueryResult<T>;
     }
 
-    if (text.includes("WHERE checked_in_by=$1 AND device_id=$2 AND device_scan_id=$3")) {
+    if (
+      text.includes("FROM workshop_checkins wc") &&
+      text.includes("checked_in_by=$1") &&
+      text.includes("device_id=$2") &&
+      text.includes("device_scan_id=$3")
+    ) {
       const row = [...this.checkins.values()].find((checkin) =>
         checkin.checked_in_by === params[0] &&
         checkin.device_id === params[1] &&
         checkin.device_scan_id === params[2]
       );
-      return { rows: row ? [{ registration_id: row.registration_id, workshop_id: row.workshop_id, checked_in_at: row.checked_in_at } as T] : [], rowCount: row ? 1 : 0 } as QueryResult<T>;
+      return {
+        rows: row
+          ? [
+              {
+                registration_id: row.registration_id,
+                workshop_id: row.workshop_id,
+                checked_in_at: row.checked_in_at,
+                student_name: null,
+                student_id: null
+              } as T
+            ]
+          : [],
+        rowCount: row ? 1 : 0
+      } as QueryResult<T>;
     }
 
     if (text.includes("FROM workshop_checkins") && text.includes("WHERE registration_id=$1")) {
@@ -125,9 +143,11 @@ async function main() {
   const first = await service.scan({ actorUserId, qrToken });
   assert.equal(first.result, "checked_in");
   assert.equal(first.registration_id, registrationId);
+  const firstCheckedInAt = first.checked_in_at;
 
   const duplicate = await service.scan({ actorUserId, qrToken });
   assert.equal(duplicate.result, "already_checked_in");
+  assert.equal(duplicate.checked_in_at, firstCheckedInAt);
   assert.equal(database.checkins.size, 1);
 
   let invalidQrCode = "";
@@ -137,6 +157,14 @@ async function main() {
     invalidQrCode = (error as { code?: string }).code ?? "";
   }
   assert.equal(invalidQrCode, "INVALID_QR_TOKEN");
+
+  let mismatchCode = "";
+  try {
+    await service.scan({ actorUserId, qrToken, workshopId: "wrong-workshop" });
+  } catch (error) {
+    mismatchCode = (error as { code?: string }).code ?? "";
+  }
+  assert.equal(mismatchCode, "WORKSHOP_MISMATCH");
 
   const syncRegistrationId = "reg-2";
   const syncWorkshopId = "workshop-2";
@@ -156,6 +184,13 @@ async function main() {
       },
       {
         device_id: "device-a",
+        device_scan_id: "scan-mismatch",
+        qr_token: syncToken,
+        workshop_id: "wrong-workshop",
+        scanned_at_device: new Date().toISOString()
+      },
+      {
+        device_id: "device-a",
         device_scan_id: "scan-invalid",
         qr_token: "broken",
         scanned_at_device: new Date().toISOString()
@@ -164,7 +199,9 @@ async function main() {
   });
 
   assert.equal(syncResponse.results[0].result, "checked_in");
-  assert.equal(syncResponse.results[1].result, "invalid_qr");
+  assert.equal(syncResponse.results[1].result, "workshop_mismatch");
+  assert.equal(syncResponse.results[1].error_code, "WORKSHOP_MISMATCH");
+  assert.equal(syncResponse.results[2].result, "invalid_qr");
 
   const replay = await service.sync({
     actorUserId,

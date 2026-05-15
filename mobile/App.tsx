@@ -38,13 +38,13 @@ import {
 import {
   findLatestCheckinByRegistrationId,
   getCachedWorkshop,
-  getRosterEntry,
-  enqueuePendingCheckin,
   getPendingCheckinSummary,
+  getRosterEntry,
   isRegistrationCancelled,
   listCheckinLog,
   listSyncLog,
   listWorkshopsCache,
+  enqueuePendingCheckin,
   upsertCancelledRegistrations,
   upsertWorkshopRosterCache,
   upsertWorkshopsCache,
@@ -65,8 +65,12 @@ import {
   type StaffResultCard,
 } from "./lib/ui";
 
-type ScreenState = "booting" | "signed_out" | "ready";
-type ViewState = "main" | "logs";
+type AppScreen =
+  | "booting"
+  | "signed_out"
+  | "workshop_select"
+  | "operator"
+  | "logs";
 
 const EMPTY_QUEUE: PendingCheckinSummary = { total: 0, retained: 0, items: [] };
 
@@ -82,14 +86,21 @@ function createLocalCheckinId(): string {
   return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function normalizeWorkshopId(value: string): string | undefined {
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
 function formatPendingStamp(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function normalizeSearchText(input: string | null | undefined): string {
+  const raw = String(input ?? "");
+  try {
+    return raw
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  } catch {
+    return raw.toLowerCase();
+  }
 }
 
 function decodeBase64Url(input: string): string | null {
@@ -158,19 +169,25 @@ function formatWorkshopTime(workshop: CachedWorkshopRecord | null): string {
   if (!workshop) {
     return "";
   }
+
   const start = workshop.starts_at
     ? new Date(workshop.starts_at).toLocaleString()
     : "?";
-  const end = workshop.ends_at
-    ? new Date(workshop.ends_at).toLocaleString()
-    : "?";
+  const end = workshop.ends_at ? new Date(workshop.ends_at).toLocaleString() : "?";
   const room = workshop.location ? ` • ${workshop.location}` : "";
   return `${start} → ${end}${room}`;
 }
 
+function getWorkshopLabel(workshop: CachedWorkshopRecord | null): string {
+  if (!workshop) {
+    return "Workshop";
+  }
+
+  return workshop.title;
+}
+
 export default function App(): ReactElement {
-  const [screenState, setScreenState] = useState<ScreenState>("booting");
-  const [viewState, setViewState] = useState<ViewState>("main");
+  const [screen, setScreen] = useState<AppScreen>("booting");
   const [session, setSession] = useState<StoredSession | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [email, setEmail] = useState<string>("");
@@ -197,15 +214,14 @@ export default function App(): ReactElement {
   const [selectedWorkshop, setSelectedWorkshop] =
     useState<CachedWorkshopRecord | null>(null);
   const [workshops, setWorkshops] = useState<CachedWorkshopRecord[]>([]);
-  const [isWorkshopPickerOpen, setIsWorkshopPickerOpen] =
+  const [isWorkshopStateReady, setIsWorkshopStateReady] =
     useState<boolean>(false);
+  const [workshopSearchQuery, setWorkshopSearchQuery] = useState<string>("");
   const [isLoadingWorkshops, setIsLoadingWorkshops] = useState<boolean>(false);
   const [isSyncingWorkshopData, setIsSyncingWorkshopData] =
     useState<boolean>(false);
 
-  const [syncLogEntries, setSyncLogEntries] = useState<StoredSyncLogEntry[]>(
-    [],
-  );
+  const [syncLogEntries, setSyncLogEntries] = useState<StoredSyncLogEntry[]>([]);
   const [checkinLogEntries, setCheckinLogEntries] = useState<
     StoredCheckinRecord[]
   >([]);
@@ -213,6 +229,25 @@ export default function App(): ReactElement {
 
   const online: boolean =
     netInfo.isConnected === true && netInfo.isInternetReachable !== false;
+
+  const normalizedWorkshopSearch = normalizeSearchText(
+    workshopSearchQuery.trim(),
+  );
+  const visibleWorkshops = normalizedWorkshopSearch
+    ? workshops.filter((workshop) => {
+        const title = normalizeSearchText(workshop.title);
+        const location = normalizeSearchText(workshop.location);
+        return (
+          title.includes(normalizedWorkshopSearch) ||
+          location.includes(normalizedWorkshopSearch)
+        );
+      })
+    : workshops;
+
+  const retainedQueueItems = queueSummary.items.filter(
+    (item) => item.last_error_code !== null || item.retry_count > 0,
+  );
+  const hasActiveWorkshop = Boolean(selectedWorkshopId && selectedWorkshop);
 
   const syncingRef = useRef<boolean>(false);
   const lastNetworkRef = useRef<{ online: boolean; type: string | null }>({
@@ -231,19 +266,32 @@ export default function App(): ReactElement {
 
   useEffect(() => {
     let active = true;
+
     const restoreWorkshop = async (): Promise<void> => {
-      const cachedSelected = await AsyncStorage.getItem(SELECTED_WORKSHOP_KEY);
-      if (!active) return;
+      try {
+        const cachedSelected = await AsyncStorage.getItem(SELECTED_WORKSHOP_KEY);
+        if (!active) {
+          return;
+        }
 
-      setSelectedWorkshopId(cachedSelected);
-      const cachedList = await listWorkshopsCache();
-      if (!active) return;
-      setWorkshops(cachedList);
+        setSelectedWorkshopId(cachedSelected);
+        const cachedList = await listWorkshopsCache();
+        if (!active) {
+          return;
+        }
+        setWorkshops(cachedList);
 
-      if (cachedSelected) {
-        const detail = await getCachedWorkshop(cachedSelected);
-        if (!active) return;
-        setSelectedWorkshop(detail);
+        if (cachedSelected) {
+          const detail = await getCachedWorkshop(cachedSelected);
+          if (!active) {
+            return;
+          }
+          setSelectedWorkshop(detail);
+        }
+      } finally {
+        if (active) {
+          setIsWorkshopStateReady(true);
+        }
       }
     };
 
@@ -255,6 +303,7 @@ export default function App(): ReactElement {
 
   useEffect(() => {
     let active = true;
+
     const loadSelected = async (): Promise<void> => {
       if (!selectedWorkshopId) {
         if (active) {
@@ -262,11 +311,13 @@ export default function App(): ReactElement {
         }
         return;
       }
+
       const detail = await getCachedWorkshop(selectedWorkshopId);
       if (active) {
         setSelectedWorkshop(detail);
       }
     };
+
     void loadSelected();
     return () => {
       active = false;
@@ -288,11 +339,11 @@ export default function App(): ReactElement {
   }, []);
 
   useEffect(() => {
-    if (viewState !== "logs") {
+    if (screen !== "logs") {
       return;
     }
     void refreshLogs();
-  }, [refreshLogs, viewState]);
+  }, [refreshLogs, screen]);
 
   useEffect(() => {
     let active = true;
@@ -302,7 +353,7 @@ export default function App(): ReactElement {
         const stored = await loadStoredSession();
         if (!stored) {
           if (active) {
-            setScreenState("signed_out");
+            setScreen("signed_out");
           }
           return;
         }
@@ -314,7 +365,6 @@ export default function App(): ReactElement {
           if (active) {
             setSession(next);
             setSessionNotice(null);
-            setScreenState("ready");
           }
           return;
         } catch (error: unknown) {
@@ -322,7 +372,7 @@ export default function App(): ReactElement {
             await clearStoredSession();
             if (active) {
               setSession(null);
-              setScreenState("signed_out");
+              setScreen("signed_out");
               setSessionNotice(error.message);
             }
             return;
@@ -334,14 +384,13 @@ export default function App(): ReactElement {
               if (active) {
                 setSession(refreshed);
                 setSessionNotice(null);
-                setScreenState("ready");
               }
               return;
             } catch (refreshError: unknown) {
               await clearStoredSession();
               if (active) {
                 setSession(null);
-                setScreenState("signed_out");
+                setScreen("signed_out");
                 setSessionNotice(
                   refreshError instanceof Error
                     ? refreshError.message
@@ -357,12 +406,11 @@ export default function App(): ReactElement {
             setSessionNotice(
               "Using a cached staff session until the app can revalidate online.",
             );
-            setScreenState("ready");
           }
         }
       } catch (error: unknown) {
         if (active) {
-          setScreenState("signed_out");
+          setScreen("signed_out");
           setSessionNotice(
             error instanceof Error
               ? error.message
@@ -373,11 +421,26 @@ export default function App(): ReactElement {
     };
 
     void restore();
-
     return () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+    if (!isWorkshopStateReady) {
+      return;
+    }
+
+    setScreen((current) => {
+      if (current === "logs") {
+        return current;
+      }
+      return hasActiveWorkshop ? "operator" : "workshop_select";
+    });
+  }, [hasActiveWorkshop, isWorkshopStateReady, session]);
 
   const refreshQueueSummary = async (): Promise<void> => {
     setIsRefreshingQueue(true);
@@ -388,70 +451,105 @@ export default function App(): ReactElement {
     }
   };
 
-  const refreshWorkshopsFromServer = useCallback(async (): Promise<void> => {
-    if (!online) {
-      setResultCard({
-        tone: "warning",
-        title: "Offline",
-        detail: "Reconnect to refresh workshops list.",
-      });
-      return;
-    }
+  const refreshWorkshopsFromServer = useCallback(
+    async (options?: { silent?: boolean }): Promise<boolean> => {
+      const silent = options?.silent === true;
+      if (!online) {
+        if (!silent) {
+          setResultCard({
+            tone: "warning",
+            title: "Offline",
+            detail: "Reconnect to refresh workshops list.",
+          });
+        }
+        return false;
+      }
 
-    setIsLoadingWorkshops(true);
-    try {
-      const data = await workshopApi.listWorkshops();
-      const syncedAt = new Date().toISOString();
-      await upsertWorkshopsCache(
-        data.workshops.map((item) => ({
-          workshop_id: item.id,
-          title: item.title,
-          starts_at: item.startsAt ?? null,
-          ends_at: item.endsAt ?? null,
-          location: item.location ?? null,
-          status: item.status ?? null,
-        })),
-        syncedAt,
-      );
-      setWorkshops(await listWorkshopsCache());
-      if (selectedWorkshopId) {
-        setSelectedWorkshop(await getCachedWorkshop(selectedWorkshopId));
+      setIsLoadingWorkshops(true);
+      try {
+        const data = await workshopApi.listWorkshops();
+        const syncedAt = new Date().toISOString();
+        await upsertWorkshopsCache(
+          data.workshops.map((item) => ({
+            workshop_id: item.id,
+            title: item.title,
+            starts_at: item.startsAt ?? null,
+            ends_at: item.endsAt ?? null,
+            location: item.location ?? null,
+            status: item.status ?? null,
+          })),
+          syncedAt,
+        );
+        setWorkshops(await listWorkshopsCache());
+        if (selectedWorkshopId) {
+          setSelectedWorkshop(await getCachedWorkshop(selectedWorkshopId));
+        }
+        return true;
+      } catch (error: unknown) {
+        if (!silent) {
+          if (isApiError(error)) {
+            setResultCard(buildDomainErrorCard(error.code, error.message));
+          } else if (error instanceof Error) {
+            setResultCard({
+              tone: "warning",
+              title: "Workshop refresh failed",
+              detail: error.message,
+            });
+          }
+        }
+        return false;
+      } finally {
+        setIsLoadingWorkshops(false);
       }
-    } catch (error: unknown) {
-      if (isApiError(error)) {
-        setResultCard(buildDomainErrorCard(error.code, error.message));
-      } else if (error instanceof Error) {
-        setResultCard({
-          tone: "warning",
-          title: "Workshop refresh failed",
-          detail: error.message,
-        });
-      }
-    } finally {
-      setIsLoadingWorkshops(false);
-    }
-  }, [online, selectedWorkshopId]);
+    },
+    [online, selectedWorkshopId],
+  );
 
   const chooseWorkshop = useCallback(
     async (workshopId: string): Promise<void> => {
       await AsyncStorage.setItem(SELECTED_WORKSHOP_KEY, workshopId);
       setSelectedWorkshopId(workshopId);
-      setIsWorkshopPickerOpen(false);
+      setScreen("operator");
       setResultCard({
         tone: "info",
-        title: "Workshop selected",
-        detail: `Now checking in for workshop ${workshopId}.`,
+        title: "Workshop ready",
+        detail: `Capture is now focused on ${getWorkshopLabel(
+          workshops.find((item) => item.workshop_id === workshopId) ?? null,
+        )}.`,
       });
     },
-    [],
+    [workshops],
   );
 
   const clearWorkshopSelection = useCallback(async (): Promise<void> => {
     await AsyncStorage.removeItem(SELECTED_WORKSHOP_KEY);
     setSelectedWorkshopId(null);
     setSelectedWorkshop(null);
-    setIsWorkshopPickerOpen(true);
+    setIsScannerOpen(false);
+    setManualQrToken("");
+    setScreen("workshop_select");
   }, []);
+
+  async function runWithFreshSession<T>(
+    action: (accessToken: string) => Promise<T>,
+  ): Promise<T> {
+    if (!session) {
+      throw new Error("Please sign in first.");
+    }
+
+    try {
+      return await action(session.accessToken);
+    } catch (error: unknown) {
+      if (isApiError(error) && error.status === 401) {
+        const refreshed = await refreshStaffSession(session.refreshToken);
+        setSession(refreshed);
+        setSessionNotice(null);
+        return action(refreshed.accessToken);
+      }
+
+      throw error;
+    }
+  }
 
   const syncWorkshopData = useCallback(async (): Promise<void> => {
     if (!selectedWorkshopId) {
@@ -524,13 +622,13 @@ export default function App(): ReactElement {
       setResultCard({
         tone: "success",
         title: "Workshop data synced",
-        detail: "Roster and cancellations were refreshed.",
+        detail: "Roster and cancellations were refreshed for this workshop.",
       });
     } catch (error: unknown) {
       if (error instanceof StaffRoleError) {
         await clearStoredSession();
         setSession(null);
-        setScreenState("signed_out");
+        setScreen("signed_out");
         setSessionNotice(error.message);
         return;
       }
@@ -548,28 +646,21 @@ export default function App(): ReactElement {
     } finally {
       setIsSyncingWorkshopData(false);
     }
-  }, [online, runWithFreshSession, selectedWorkshopId, session]);
+  }, [online, selectedWorkshopId, session]);
 
-  async function runWithFreshSession<T>(
-    action: (accessToken: string) => Promise<T>,
-  ): Promise<T> {
-    if (!session) {
-      throw new Error("Please sign in first.");
+  useEffect(() => {
+    if (!session || !online || isLoadingWorkshops || workshops.length > 0) {
+      return;
     }
 
-    try {
-      return await action(session.accessToken);
-    } catch (error: unknown) {
-      if (isApiError(error) && error.status === 401) {
-        const refreshed = await refreshStaffSession(session.refreshToken);
-        setSession(refreshed);
-        setSessionNotice(null);
-        return action(refreshed.accessToken);
-      }
-
-      throw error;
-    }
-  }
+    void refreshWorkshopsFromServer({ silent: true });
+  }, [
+    isLoadingWorkshops,
+    online,
+    refreshWorkshopsFromServer,
+    session,
+    workshops.length,
+  ]);
 
   const queueOfflineCapture = async (
     qrToken: string,
@@ -583,7 +674,9 @@ export default function App(): ReactElement {
       setResultCard({
         tone: "warning",
         title: "Already recorded",
-        detail: `This registration was already scanned on this device (${formatPendingStamp(already.checked_in_at)}).`,
+        detail: `This registration was already scanned on this device (${formatPendingStamp(
+          already.checked_in_at,
+        )}).`,
       });
       setManualQrToken("");
       return;
@@ -638,6 +731,7 @@ export default function App(): ReactElement {
         detail:
           "Select the workshop you are checking in before scanning QR codes.",
       });
+      setScreen("workshop_select");
       return;
     }
 
@@ -696,7 +790,7 @@ export default function App(): ReactElement {
       if (error instanceof StaffRoleError) {
         await clearStoredSession();
         setSession(null);
-        setScreenState("signed_out");
+        setScreen("signed_out");
         setSessionNotice(error.message);
         return;
       }
@@ -725,8 +819,12 @@ export default function App(): ReactElement {
       const next = await loginStaff(email.trim(), password);
       setSession(next);
       setPassword("");
-      setScreenState("ready");
       await refreshQueueSummary();
+      await refreshWorkshopsFromServer({ silent: true });
+      if (selectedWorkshopId && online) {
+        await syncWorkshopData();
+      }
+      setScreen(hasActiveWorkshop ? "operator" : "workshop_select");
     } catch (error: unknown) {
       if (error instanceof StaffRoleError) {
         setAuthError(error.message);
@@ -743,7 +841,8 @@ export default function App(): ReactElement {
   const handleSignOut = async (): Promise<void> => {
     await clearStoredSession();
     setSession(null);
-    setScreenState("signed_out");
+    setScreen("signed_out");
+    setIsScannerOpen(false);
     setSessionNotice(
       "Signed out. Pending offline check-ins stay on this device.",
     );
@@ -786,7 +885,7 @@ export default function App(): ReactElement {
     } finally {
       setIsSyncing(false);
     }
-  }, [refreshQueueSummary, runWithFreshSession, session]);
+  }, [session]);
 
   useEffect(() => {
     const previous = lastNetworkRef.current;
@@ -839,7 +938,7 @@ export default function App(): ReactElement {
     setTimeout(() => setScanCooldown(false), 1200);
   };
 
-  if (screenState === "booting") {
+  if (screen === "booting") {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" />
@@ -854,7 +953,7 @@ export default function App(): ReactElement {
     );
   }
 
-  if (screenState === "signed_out" || !session) {
+  if (screen === "signed_out" || !session) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" />
@@ -862,8 +961,8 @@ export default function App(): ReactElement {
           <Text style={styles.eyebrow}>UniHub Workshop</Text>
           <Text style={styles.title}>Staff Check-in</Text>
           <Text style={styles.body}>
-            Sign in with a `checkin_staff` account to scan workshop QR codes and
-            manage offline sync.
+            Sign in with a `checkin_staff` account to move into workshop
+            preflight and live capture.
           </Text>
           {sessionNotice ? (
             <Text style={styles.notice}>{sessionNotice}</Text>
@@ -892,7 +991,7 @@ export default function App(): ReactElement {
             style={styles.primaryButton}
           >
             <Text style={styles.primaryButtonLabel}>
-              {isAuthenticating ? "Signing in..." : "Sign in"}
+              {isAuthenticating ? "Signing in..." : "Enter operator flow"}
             </Text>
           </Pressable>
         </ScrollView>
@@ -900,30 +999,44 @@ export default function App(): ReactElement {
     );
   }
 
-  if (viewState === "logs") {
+  if (screen === "logs") {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="dark-content" />
         <ScrollView contentContainerStyle={styles.workspace}>
           <View style={styles.headerRow}>
-            <View>
+            <View style={styles.headerCopy}>
               <Text style={styles.eyebrow}>UniHub Workshop</Text>
-              <Text style={styles.title}>Logs</Text>
+              <Text style={styles.title}>Audit Logs</Text>
+              <Text style={styles.helperText}>
+                Review sync attempts and the device-side check-in trail, then
+                return to capture.
+              </Text>
             </View>
-            <Pressable
-              onPress={() => setViewState("main")}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonLabel}>Back</Text>
-            </Pressable>
+            <View style={styles.statusCluster}>
+              <View
+                style={[
+                  styles.pill,
+                  online ? styles.onlinePill : styles.offlinePill,
+                ]}
+              >
+                <Text style={styles.pillLabel}>{online ? "Online" : "Offline"}</Text>
+              </View>
+              <Pressable
+                onPress={() => setScreen(hasActiveWorkshop ? "operator" : "workshop_select")}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonLabel}>Back to capture</Text>
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.section}>
             <View style={styles.headerRow}>
-              <View>
-                <Text style={styles.sectionTitle}>Sync log</Text>
+              <View style={styles.headerCopy}>
+                <Text style={styles.sectionTitle}>Sync history</Text>
                 <Text style={styles.helperText}>
-                  Recent sync attempts on this device.
+                  Recent queue reconciliation attempts recorded on this device.
                 </Text>
               </View>
               <Pressable
@@ -939,7 +1052,7 @@ export default function App(): ReactElement {
 
             {syncLogEntries.length === 0 ? (
               <Text style={styles.helperText}>
-                No sync attempts recorded yet.
+                No sync attempts have been recorded on this device yet.
               </Text>
             ) : (
               <View style={styles.table}>
@@ -947,9 +1060,7 @@ export default function App(): ReactElement {
                   <Text style={[styles.tableHeaderCell, styles.tableColTime]}>
                     Time
                   </Text>
-                  <Text
-                    style={[styles.tableHeaderCell, styles.tableColOutcome]}
-                  >
+                  <Text style={[styles.tableHeaderCell, styles.tableColOutcome]}>
                     Outcome
                   </Text>
                 </View>
@@ -963,7 +1074,7 @@ export default function App(): ReactElement {
                   );
                   const outcome = entry.error
                     ? `Error: ${entry.error}`
-                    : `${entry.records_ok} ok, ${entry.records_conflict} dup, ${kept} kept`;
+                    : `${entry.records_ok} settled, ${entry.records_conflict} duplicates, ${kept} kept`;
                   return (
                     <View key={entry.id} style={styles.tableRow}>
                       <Text style={[styles.tableCell, styles.tableColTime]}>
@@ -980,12 +1091,14 @@ export default function App(): ReactElement {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Check-in log</Text>
-            <Text style={styles.helperText}>Recent scans stored locally.</Text>
+            <Text style={styles.sectionTitle}>Check-in trail</Text>
+            <Text style={styles.helperText}>
+              Recent locally stored scans for audit and troubleshooting.
+            </Text>
 
             {checkinLogEntries.length === 0 ? (
               <Text style={styles.helperText}>
-                No check-ins stored on this device yet.
+                No device-side check-ins have been stored yet.
               </Text>
             ) : (
               <View style={styles.table}>
@@ -1026,151 +1139,266 @@ export default function App(): ReactElement {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView contentContainerStyle={styles.workspace}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.eyebrow}>UniHub Workshop</Text>
-            <Text style={styles.title}>Mobile Check-in</Text>
-          </View>
-          <View
-            style={[
-              styles.pill,
-              online ? styles.onlinePill : styles.offlinePill,
-            ]}
-          >
-            <Text style={styles.pillLabel}>
-              {online ? "Online" : "Offline"}
-            </Text>
-          </View>
-        </View>
-
-        <Pressable
-          onPress={() => setViewState("logs")}
-          style={styles.secondaryButton}
-        >
-          <Text style={styles.secondaryButtonLabel}>View logs</Text>
-        </Pressable>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Staff session</Text>
-          <Text style={styles.body}>
-            {session.user.full_name} • {session.user.email}
-          </Text>
-          {sessionNotice ? (
-            <Text style={styles.notice}>{sessionNotice}</Text>
-          ) : null}
-          <Pressable
-            onPress={() => void handleSignOut()}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonLabel}>Sign out</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Workshop context</Text>
-          {selectedWorkshop ? (
-            <>
-              <Text style={styles.body}>{selectedWorkshop.title}</Text>
-              <Text style={styles.helperText}>
-                {formatWorkshopTime(selectedWorkshop)}
-              </Text>
-              <Text style={styles.helperText}>
-                Workshop ID: {selectedWorkshop.workshop_id}
-              </Text>
-            </>
-          ) : (
-            <Text style={styles.helperText}>
-              Select a workshop before scanning QR codes.
-            </Text>
-          )}
-
+  if (screen === "workshop_select") {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView contentContainerStyle={styles.workspace}>
           <View style={styles.headerRow}>
-            <Pressable
-              disabled={!online || isLoadingWorkshops}
-              onPress={() => void refreshWorkshopsFromServer()}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonLabel}>
-                {isLoadingWorkshops ? "Refreshing..." : "Refresh list"}
+            <View style={styles.headerCopy}>
+              <Text style={styles.eyebrow}>UniHub Workshop</Text>
+              <Text style={styles.title}>Choose Workshop</Text>
+              <Text style={styles.helperText}>
+                Select the workshop context before opening capture.
               </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setIsWorkshopPickerOpen((value) => !value)}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonLabel}>
-                {isWorkshopPickerOpen
-                  ? "Hide"
-                  : selectedWorkshop
-                    ? "Change"
-                    : "Select"}
-              </Text>
-            </Pressable>
+            </View>
+            <View style={styles.statusCluster}>
+              <View
+                style={[
+                  styles.pill,
+                  online ? styles.onlinePill : styles.offlinePill,
+                ]}
+              >
+                <Text style={styles.pillLabel}>{online ? "Online" : "Offline"}</Text>
+              </View>
+              <Pressable
+                onPress={() => void handleSignOut()}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonLabel}>Sign out</Text>
+              </Pressable>
+            </View>
           </View>
 
-          <Pressable
-            disabled={!online || !selectedWorkshopId || isSyncingWorkshopData}
-            onPress={() => void syncWorkshopData()}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonLabel}>
-              {isSyncingWorkshopData
-                ? "Syncing..."
-                : "Sync roster + cancellations"}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Staff session</Text>
+            <Text style={styles.body}>
+              {session.user.full_name} • {session.user.email}
             </Text>
-          </Pressable>
-
-          {selectedWorkshop ? (
-            <Pressable
-              onPress={() => void clearWorkshopSelection()}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonLabel}>Clear selection</Text>
-            </Pressable>
-          ) : null}
-
-          {isWorkshopPickerOpen ? (
-            workshops.length === 0 ? (
-              <Text style={styles.helperText}>
-                No cached workshops yet. Tap “Refresh list” while online.
-              </Text>
+            {sessionNotice ? (
+              <Text style={styles.notice}>{sessionNotice}</Text>
             ) : (
-              <View style={styles.queueList}>
-                {workshops.map((workshop) => {
-                  const active = workshop.workshop_id === selectedWorkshopId;
-                  return (
+              <Text style={styles.helperText}>
+                Once a workshop is selected, you will land directly in the
+                operator capture workspace.
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.headerRow}>
+              <View style={styles.headerCopy}>
+                <Text style={styles.sectionTitle}>Workshop preflight</Text>
+                <Text style={styles.helperText}>
+                  Search the cached list by title or room. Refresh while online
+                  if the session you need is not on this device yet.
+                </Text>
+              </View>
+              <Pressable
+                disabled={!online || isLoadingWorkshops}
+                onPress={() => void refreshWorkshopsFromServer()}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonLabel}>
+                  {isLoadingWorkshops ? "Refreshing..." : "Refresh list"}
+                </Text>
+              </Pressable>
+            </View>
+
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={setWorkshopSearchQuery}
+              placeholder="Search by title or room"
+              placeholderTextColor="#8b7355"
+              style={styles.input}
+              value={workshopSearchQuery}
+            />
+
+            {workshops.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.sectionTitle}>No cached workshops yet</Text>
+                <Text style={styles.helperText}>
+                  Capture cannot begin until a workshop list is available on
+                  this device. Refresh while online to load workshop options.
+                </Text>
+              </View>
+            ) : null}
+
+            {workshops.length > 0 && visibleWorkshops.length === 0 ? (
+              <Text style={styles.helperText}>
+                No cached workshops match this search.
+              </Text>
+            ) : null}
+
+            {workshops.length > 0 ? (
+              <View style={styles.workshopListFrame}>
+                <ScrollView
+                  nestedScrollEnabled
+                  contentContainerStyle={styles.queueList}
+                >
+                  {visibleWorkshops.map((workshop) => (
                     <Pressable
                       key={workshop.workshop_id}
                       onPress={() => void chooseWorkshop(workshop.workshop_id)}
-                      style={[
-                        styles.queueItem,
-                        active ? styles.activeWorkshopItem : null,
-                      ]}
+                      style={styles.queueItem}
                     >
                       <Text style={styles.queueId}>{workshop.title}</Text>
                       <Text style={styles.helperText}>
                         {formatWorkshopTime(workshop)}
                       </Text>
                       <Text style={styles.helperText}>
-                        {workshop.workshop_id}
+                        Workshop ID: {workshop.workshop_id}
                       </Text>
                     </Pressable>
-                  );
-                })}
+                  ))}
+                </ScrollView>
               </View>
-            )
+            ) : null}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView contentContainerStyle={styles.workspace}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>UniHub Workshop</Text>
+            <Text style={styles.title}>Capture</Text>
+            <Text style={styles.helperText}>
+              Active workshop: {getWorkshopLabel(selectedWorkshop)}
+            </Text>
+          </View>
+          <View style={styles.statusCluster}>
+            <View
+              style={[
+                styles.pill,
+                online ? styles.onlinePill : styles.offlinePill,
+              ]}
+            >
+              <Text style={styles.pillLabel}>{online ? "Online" : "Offline"}</Text>
+            </View>
+            <View
+              style={[
+                styles.pill,
+                queueSummary.retained > 0 ? styles.attentionPill : styles.infoPill,
+              ]}
+            >
+              <Text style={styles.pillLabel}>
+                Queue {queueSummary.total}
+                {queueSummary.retained > 0 ? ` • Retry ${queueSummary.retained}` : ""}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.actionRow}>
+          <Pressable
+            onPress={() => setScreen("logs")}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonLabel}>View logs</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setScreen("workshop_select")}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonLabel}>Change workshop</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Workshop context</Text>
+          <Text style={styles.body}>{selectedWorkshop?.title}</Text>
+          <Text style={styles.helperText}>
+            {formatWorkshopTime(selectedWorkshop)}
+          </Text>
+          <Text style={styles.helperText}>
+            Workshop ID: {selectedWorkshop?.workshop_id}
+          </Text>
+          <View style={styles.actionRow}>
+            <Pressable
+              disabled={!online || isSyncingWorkshopData}
+              onPress={() => void syncWorkshopData()}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonLabel}>
+                {isSyncingWorkshopData ? "Syncing..." : "Sync roster"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void clearWorkshopSelection()}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonLabel}>Clear workshop</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerCopy}>
+              <Text style={styles.sectionTitle}>Pending queue</Text>
+              <Text style={styles.helperText}>
+                {queueSummary.total === 0
+                  ? "No pending check-ins are waiting on this device."
+                  : `Pending ${queueSummary.total} • Needs retry ${queueSummary.retained}`}
+              </Text>
+            </View>
+            <Pressable
+              disabled={isRefreshingQueue}
+              onPress={() => void refreshQueueSummary()}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonLabel}>
+                {isRefreshingQueue ? "Refreshing..." : "Refresh"}
+              </Text>
+            </Pressable>
+          </View>
+
+          <Pressable
+            disabled={isSyncing || !online}
+            onPress={() => void handleSync()}
+            style={styles.primaryButton}
+          >
+            <Text style={styles.primaryButtonLabel}>
+              {isSyncing ? "Syncing..." : "Sync queue now"}
+            </Text>
+          </Pressable>
+
+          {!online ? (
+            <Text style={styles.helperText}>
+              Reconnect to sync queued check-ins with the server.
+            </Text>
+          ) : null}
+
+          {syncResult && syncResult.retainedItems.length > 0 ? (
+            <Text style={styles.helperText}>
+              Some items were kept for retry. Open logs for the detailed audit
+              trail.
+            </Text>
+          ) : null}
+
+          {retainedQueueItems.length > 0 ? (
+            <View style={styles.retainedList}>
+              {retainedQueueItems.slice(0, 3).map((item) => (
+                <Text key={item.device_scan_id} style={styles.retainedTag}>
+                  Retry needed: {item.device_scan_id}
+                </Text>
+              ))}
+            </View>
           ) : null}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Capture</Text>
+          <Text style={styles.sectionTitle}>Scan attendee</Text>
           <Text style={styles.helperText}>
-            Use the camera for QR scanning or paste a token manually if the
-            camera is blocked.
+            Use the camera for live QR capture, or paste a token manually if
+            the camera is unavailable.
           </Text>
 
           {permission?.granted ? (
@@ -1254,55 +1482,35 @@ export default function App(): ReactElement {
         ) : null}
 
         <View style={styles.section}>
-          <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.sectionTitle}>Pending queue</Text>
-              <Text style={styles.helperText}>
-                Pending: {queueSummary.total} • Needs retry:{" "}
-                {queueSummary.retained}
-              </Text>
-            </View>
+          <Text style={styles.sectionTitle}>Operator controls</Text>
+          <Text style={styles.body}>
+            {session.user.full_name} • {session.user.email}
+          </Text>
+          {sessionNotice ? (
+            <Text style={styles.notice}>{sessionNotice}</Text>
+          ) : (
+            <Text style={styles.helperText}>
+              Secondary maintenance actions stay here so capture remains the
+              primary focus.
+            </Text>
+          )}
+          <View style={styles.actionRow}>
             <Pressable
-              disabled={isRefreshingQueue}
-              onPress={() => void refreshQueueSummary()}
+              disabled={!online || isLoadingWorkshops}
+              onPress={() => void refreshWorkshopsFromServer()}
               style={styles.secondaryButton}
             >
               <Text style={styles.secondaryButtonLabel}>
-                {isRefreshingQueue ? "Refreshing..." : "Refresh"}
+                {isLoadingWorkshops ? "Refreshing..." : "Refresh workshops"}
               </Text>
             </Pressable>
+            <Pressable
+              onPress={() => void handleSignOut()}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonLabel}>Sign out</Text>
+            </Pressable>
           </View>
-
-          <Pressable
-            disabled={isSyncing || !online}
-            onPress={() => void handleSync()}
-            style={styles.primaryButton}
-          >
-            <Text style={styles.primaryButtonLabel}>
-              {isSyncing ? "Syncing..." : "Sync now"}
-            </Text>
-          </Pressable>
-          {!online ? (
-            <Text style={styles.helperText}>
-              Reconnect to sync queued check-ins with the server.
-            </Text>
-          ) : null}
-
-          {queueSummary.total === 0 ? (
-            <Text style={styles.helperText}>
-              No pending check-ins are waiting to sync.
-            </Text>
-          ) : (
-            <Text style={styles.helperText}>
-              Queued check-ins clear after a successful sync.
-            </Text>
-          )}
-
-          {syncResult && syncResult.retainedItems.length > 0 ? (
-            <Text style={styles.helperText}>
-              Some items were kept for retry. Open Logs for details.
-            </Text>
-          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -1334,8 +1542,22 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 12,
+  },
+  headerCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  statusCluster: {
+    alignItems: "flex-end",
+    gap: 8,
+    maxWidth: "42%",
+  },
+  actionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
   },
   table: {
     borderWidth: 1,
@@ -1462,6 +1684,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 16,
     alignSelf: "flex-start",
+    backgroundColor: "#fffaf2",
   },
   secondaryButtonLabel: {
     color: "#6f4c27",
@@ -1478,6 +1701,12 @@ const styles = StyleSheet.create({
   },
   offlinePill: {
     backgroundColor: "#fde68a",
+  },
+  attentionPill: {
+    backgroundColor: "#ffedd5",
+  },
+  infoPill: {
+    backgroundColor: "#dbeafe",
   },
   pillLabel: {
     color: "#1f2937",
@@ -1498,6 +1727,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
     gap: 12,
+  },
+  emptyState: {
+    backgroundColor: "#fff6e8",
+    borderRadius: 18,
+    padding: 16,
+    gap: 8,
   },
   resultCard: {
     borderRadius: 22,
@@ -1533,6 +1768,10 @@ const styles = StyleSheet.create({
   queueList: {
     gap: 10,
   },
+  workshopListFrame: {
+    maxHeight: 320,
+    borderRadius: 18,
+  },
   queueItem: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
@@ -1540,9 +1779,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#eadcc7",
     gap: 4,
-  },
-  activeWorkshopItem: {
-    borderColor: "#8a5a2b",
   },
   queueId: {
     color: "#1f2937",

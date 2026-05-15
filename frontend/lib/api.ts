@@ -4,8 +4,11 @@ import type {
   DashboardStats,
   UpdateWorkshopInput,
   UploadWorkshopPdfResponse,
-  Workshop
+  Workshop,
+  WorkshopDiscoveryQuery,
+  WorkshopListItem
 } from "@/types/admin";
+import { buildWorkshopDiscoverySearchParams, normalizeWorkshopDiscoveryQuery } from "@/lib/workshop-discovery";
 
 const API_BASE_URL: string = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
 const ACCESS_TOKEN_TTL_SECONDS: number = 15 * 60;
@@ -363,10 +366,13 @@ export async function getWorkshopPublic(id: string): Promise<Workshop> {
 
 export interface WorkshopsThisMonthResponse {
   stats: { workshopsThisMonth: number; registrationsThisMonth: number };
-  workshops: Workshop[];
+  workshops: WorkshopListItem[];
 }
 
-export async function getWorkshopsThisMonth(): Promise<WorkshopsThisMonthResponse> {
-  const response = await fetch(`${API_BASE_URL}/workshops`, { cache: "no-store" });
+export async function getWorkshopsThisMonth(input?: Partial<WorkshopDiscoveryQuery>): Promise<WorkshopsThisMonthResponse> {
+  const query = normalizeWorkshopDiscoveryQuery(input);
+  const params = buildWorkshopDiscoverySearchParams(query);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(`${API_BASE_URL}/workshops${suffix}`, { cache: "no-store" });
   return parseResponse<WorkshopsThisMonthResponse>(response);
 }

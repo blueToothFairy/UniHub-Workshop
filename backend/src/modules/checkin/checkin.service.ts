@@ -3,6 +3,9 @@ import jwt from "jsonwebtoken";
 import { AppError } from "../../shared/errors/AppError.js";
 import type { IDatabase } from "../../shared/interfaces/IDatabase.js";
 import type {
+  CheckinCancelledSinceResponse,
+  CheckinRosterEntry,
+  CheckinRosterResponse,
   CheckinQrPayload,
   CheckinScanResponse,
   CheckinSource,
@@ -32,6 +35,19 @@ interface CheckinReplayRow {
 
 interface InsertCheckinRow {
   checked_in_at: Date;
+}
+
+interface CheckinRosterRow {
+  registration_id: string;
+  student_user_id: string;
+  student_name: string | null;
+  student_id: string | null;
+  registration_status: "confirmed" | "cancelled" | "expired";
+}
+
+interface CheckinCancelledRow {
+  registration_id: string;
+  cancelled_at: Date;
 }
 
 export class CheckinService {
@@ -110,6 +126,67 @@ export class CheckinService {
   public async getTotalCheckins(): Promise<number> {
     const result = await this.database.query<{ total: string }>("SELECT COUNT(*)::text AS total FROM workshop_checkins");
     return Number(result.rows[0]?.total ?? 0);
+  }
+
+  public async getRoster(workshopId: string, after?: string): Promise<CheckinRosterResponse> {
+    const params: unknown[] = [workshopId];
+    let afterClause = "";
+    if (after) {
+      const afterIso = this.parseIsoTimestamp(after, "after");
+      params.push(afterIso);
+      afterClause = " AND r.updated_at > $2::timestamptz";
+    }
+
+    const result = await this.database.query<CheckinRosterRow>(
+      `SELECT
+         r.id AS registration_id,
+         r.user_id AS student_user_id,
+         u.full_name AS student_name,
+         u.student_id AS student_id,
+         r.status AS registration_status
+       FROM registrations r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.workshop_id=$1
+       AND r.status IN ('confirmed', 'cancelled', 'expired')
+       ${afterClause}
+       ORDER BY r.updated_at ASC, r.created_at ASC`,
+      params
+    );
+
+    const serverTime = new Date().toISOString();
+    return {
+      workshop_id: workshopId,
+      server_time: serverTime,
+      roster: result.rows.map((row) => this.toRosterEntry(row))
+    };
+  }
+
+  public async getCancelledSince(after?: string): Promise<CheckinCancelledSinceResponse> {
+    const params: unknown[] = [];
+    let whereClause = "WHERE r.status='cancelled' AND r.cancelled_at IS NOT NULL";
+    if (after) {
+      const afterIso = this.parseIsoTimestamp(after, "after");
+      params.push(afterIso);
+      whereClause += " AND r.cancelled_at > $1::timestamptz";
+    }
+
+    const result = await this.database.query<CheckinCancelledRow>(
+      `SELECT
+         r.id AS registration_id,
+         r.cancelled_at AS cancelled_at
+       FROM registrations r
+       ${whereClause}
+       ORDER BY r.cancelled_at ASC, r.id ASC`,
+      params
+    );
+
+    return {
+      cancelled: result.rows.map((row) => ({
+        registration_id: row.registration_id,
+        cancelled_at: row.cancelled_at.toISOString()
+      })),
+      server_time: new Date().toISOString()
+    };
   }
 
   private async processSyncItem(actorUserId: string, item: CheckinSyncItemRequest): Promise<CheckinSyncItemResponse> {
@@ -347,6 +424,24 @@ export class CheckinService {
     } catch {
       throw new AppError(400, "INVALID_QR_TOKEN", "QR token is invalid or expired");
     }
+  }
+
+  private parseIsoTimestamp(value: string, field: string): string {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new AppError(400, "INVALID_QUERY", `${field} must be a valid ISO timestamp`);
+    }
+    return parsed.toISOString();
+  }
+
+  private toRosterEntry(row: CheckinRosterRow): CheckinRosterEntry {
+    return {
+      registration_id: row.registration_id,
+      student_user_id: row.student_user_id,
+      student_name: row.student_name ?? "Unknown student",
+      student_id: row.student_id,
+      registration_status: row.registration_status
+    };
   }
 
   private toScanResponse(

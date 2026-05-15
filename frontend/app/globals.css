@@ -523,6 +523,45 @@ a:focus-visible {
   background: linear-gradient(145deg, #fff 0%, #f6fbec 100%);
 }
 
+.workshop-discovery-controls {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.workshop-discovery-controls-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr);
+  gap: var(--space-4);
+}
+
+.workshop-discovery-field {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+  color: #25334b;
+}
+
+.workshop-discovery-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.workshop-discovery-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #2c3748;
+}
+
+.workshop-discovery-toggle input {
+  width: 18px;
+  height: 18px;
+}
+
 .stat-tile {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -738,6 +777,14 @@ a:focus-visible {
 
   .workshop-showcase-footer {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .workshop-discovery-controls-row {
+    grid-template-columns: 1fr;
+  }
+
+  .workshop-discovery-summary {
     align-items: flex-start;
   }
 }

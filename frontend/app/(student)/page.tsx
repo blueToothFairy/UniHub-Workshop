@@ -1,29 +1,30 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
 import { getWorkshopsThisMonth } from "@/lib/api";
+import WorkshopDiscoveryPanel from "@/components/student/workshop-discovery-panel";
+import { DEFAULT_WORKSHOP_DISCOVERY_QUERY, isWorkshopDiscoveryPaymentFilter } from "@/lib/workshop-discovery";
+import type { WorkshopDiscoveryQuery } from "@/types/admin";
 
-export default async function StudentHomePage(): Promise<ReactElement> {
-  const payload = await getWorkshopsThisMonth();
-  const workshops = payload.workshops ?? [];
+interface Props {
+  searchParams?: {
+    q?: string;
+    payment?: string;
+    available_only?: string;
+  };
+}
+
+export default async function StudentHomePage({ searchParams }: Props): Promise<ReactElement> {
+  const paymentParam = searchParams?.payment ?? "";
+  const payment: WorkshopDiscoveryQuery["payment"] = isWorkshopDiscoveryPaymentFilter(paymentParam)
+    ? paymentParam
+    : DEFAULT_WORKSHOP_DISCOVERY_QUERY.payment;
+  const initialQuery: Partial<WorkshopDiscoveryQuery> = {
+    q: searchParams?.q ?? DEFAULT_WORKSHOP_DISCOVERY_QUERY.q,
+    payment,
+    availableOnly: searchParams?.available_only === "true"
+  };
+  const payload = await getWorkshopsThisMonth(initialQuery);
   const stats = payload.stats ?? { workshopsThisMonth: 0, registrationsThisMonth: 0 };
-
-  function formatDateLabel(at?: string): string {
-    if (!at) return "Date unavailable";
-    try {
-      return new Date(at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "2-digit", year: "numeric" });
-    } catch {
-      return at;
-    }
-  }
-
-  function formatTimeLabel(at?: string): string {
-    if (!at) return "Time TBD";
-    try {
-      return new Date(at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-    } catch {
-      return at;
-    }
-  }
 
   return (
     <main>
@@ -50,24 +51,8 @@ export default async function StudentHomePage(): Promise<ReactElement> {
       <section className="section">
         <div className="container">
           <h2>Available Workshops</h2>
-          <p className="muted">Explore our upcoming sessions this month. Click a workshop to view details.</p>
-          <div className="card-grid workshop-showcase-grid">
-            {workshops.map((w) => (
-              <article key={w.id} className="workshop-showcase-card">
-                <p className="workshop-showcase-date">{formatDateLabel(w.startsAt)}</p>
-                <h3 className="workshop-showcase-title">{w.title}</h3>
-                <div className="workshop-showcase-meta">
-                  <p><strong>Time:</strong> {formatTimeLabel(w.startsAt)}</p>
-                  <p><strong>Speaker:</strong> {w.speakerName}</p>
-                  <p><strong>Room:</strong> {w.room}</p>
-                </div>
-                <div className="workshop-showcase-footer">
-                  <p className="workshop-seat-availability">{w.availableSeats} seats available</p>
-                  <Link href={`/workshops/${w.id}`} className="workshop-showcase-link">View details</Link>
-                </div>
-              </article>
-            ))}
-          </div>
+          <p className="muted">Search, filter, and explore our upcoming sessions this month. Click a workshop to view details.</p>
+          <WorkshopDiscoveryPanel initialPayload={payload} initialQuery={initialQuery} />
         </div>
       </section>
 

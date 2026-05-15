@@ -29,3 +29,54 @@ The system SHALL return enough persisted attendance information in check-in resp
 - **WHEN** the check-in API handles the request
 - **THEN** the response MUST include `result="already_checked_in"`
 - **AND** the response MUST include the original persisted `checked_in_at` timestamp so the device can explain the duplicate outcome to staff
+
+### Requirement: Staff devices can sync roster snapshots for offline identity and mismatch checks
+The system SHALL allow authenticated users with role `checkin_staff` to fetch a workshop roster snapshot so the mobile app can cache attendee identity details and determine workshop/registration membership when offline.
+
+#### Scenario: Staff fetches workshop roster
+- **GIVEN** a `checkin_staff` user is authenticated
+- **WHEN** the client calls `GET /checkin/roster?workshop_id={workshop_id}`
+- **THEN** the API MUST return HTTP `200`
+- **AND** the response body MUST include `{ "data": { "workshop_id": string, "server_time": string, "roster": [{ "registration_id": string, "student_user_id": string, "student_name": string, "student_id": string | null, "registration_status": "confirmed" | "cancelled" | "expired" }] } }`
+
+#### Scenario: Incremental roster sync using `after`
+- **GIVEN** a `checkin_staff` user is authenticated
+- **AND** the client has a previous `server_time` cursor value
+- **WHEN** the client calls `GET /checkin/roster?workshop_id={workshop_id}&after={cursor}`
+- **THEN** the API MUST return HTTP `200`
+- **AND** the server MUST return only roster entries updated after the provided cursor
+- **AND** the response MUST include a new `server_time` value suitable for the next incremental request
+
+#### Scenario: Missing workshop id is rejected
+- **GIVEN** a `checkin_staff` user is authenticated
+- **WHEN** the client calls `GET /checkin/roster` without `workshop_id`
+- **THEN** the API MUST return HTTP `400`
+- **AND** the response body MUST include `{ "error": { "code": "WORKSHOP_ID_REQUIRED", "message": string } }`
+
+#### Scenario: Unauthorized user cannot fetch roster
+- **GIVEN** the caller is unauthenticated or has a role other than `checkin_staff`
+- **WHEN** the caller requests `GET /checkin/roster`
+- **THEN** the API MUST return HTTP `401` for missing/invalid authentication or HTTP `403` for insufficient role
+- **AND** the response body MUST include `{ "error": { "code": string, "message": string } }`
+
+### Requirement: Staff devices can sync cancelled registrations for offline rejection
+The system SHALL allow authenticated users with role `checkin_staff` to fetch recently cancelled registrations so the mobile app can reject cancelled attendees even while offline.
+
+#### Scenario: Staff fetches cancelled registrations since a cursor
+- **GIVEN** a `checkin_staff` user is authenticated
+- **WHEN** the client calls `GET /checkin/cancelled-since?after={cursor}`
+- **THEN** the API MUST return HTTP `200`
+- **AND** the response body MUST include `{ "data": { "cancelled": [{ "registration_id": string, "cancelled_at": string }], "server_time": string } }`
+
+#### Scenario: Invalid `after` cursor is rejected
+- **GIVEN** a `checkin_staff` user is authenticated
+- **AND** the client provides an invalid ISO timestamp for `after`
+- **WHEN** the client calls `GET /checkin/cancelled-since?after={after}`
+- **THEN** the API MUST return HTTP `400`
+- **AND** the response body MUST include `{ "error": { "code": "INVALID_QUERY", "message": string } }`
+
+#### Scenario: Unauthorized user cannot fetch cancelled registrations
+- **GIVEN** the caller is unauthenticated or has a role other than `checkin_staff`
+- **WHEN** the caller requests `GET /checkin/cancelled-since`
+- **THEN** the API MUST return HTTP `401` for missing/invalid authentication or HTTP `403` for insufficient role
+- **AND** the response body MUST include `{ "error": { "code": string, "message": string } }`

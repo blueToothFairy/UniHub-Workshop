@@ -48,6 +48,32 @@ export interface CheckinSyncResponse {
   results: CheckinSyncItemResponse[];
 }
 
+export type CheckinRosterRegistrationStatus = "confirmed" | "cancelled" | "expired";
+
+export interface CheckinRosterEntry {
+  registration_id: string;
+  student_user_id: string;
+  student_name: string;
+  student_id: string | null;
+  registration_status: CheckinRosterRegistrationStatus;
+}
+
+export interface CheckinRosterResponse {
+  workshop_id: string;
+  server_time: string;
+  roster: CheckinRosterEntry[];
+}
+
+export interface CheckinCancelledEntry {
+  registration_id: string;
+  cancelled_at: string;
+}
+
+export interface CheckinCancelledSinceResponse {
+  cancelled: CheckinCancelledEntry[];
+  server_time: string;
+}
+
 export interface CheckinQrPayload {
   type: "workshop_checkin";
   registration_id: string;

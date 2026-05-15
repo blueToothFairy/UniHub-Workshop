@@ -128,6 +128,7 @@ export class AdminService {
 
     const workshop: Workshop = toWorkshop(created.rows[0]);
     await this.insertAudit("workshop.create", actorUserId, id, null, workshop);
+    void this.queue.enqueueWorkshopChanged(id, "created");
     return workshop;
   }
 
@@ -181,6 +182,13 @@ export class AdminService {
       current.status !== workshop.status
     ) {
       void this.queue.enqueueWorkshopChanged(id, "schedule-or-status-changed");
+    } else if (
+      current.title !== workshop.title ||
+      current.description !== workshop.description ||
+      current.speakerName !== workshop.speakerName ||
+      current.priceVnd !== workshop.priceVnd
+    ) {
+      void this.queue.enqueueWorkshopChanged(id, "content-changed");
     }
 
     return workshop;

@@ -8,6 +8,8 @@ import { AuthService } from "./modules/auth/auth.service.js";
 import { authenticate } from "./modules/auth/auth.middleware.js";
 import { createWorkshopRouter } from "./modules/workshop/workshop.router.js";
 import { WorkshopService } from "./modules/workshop/workshop.service.js";
+import { ElasticsearchWorkshopSearchAdapter } from "./modules/workshop/elasticsearch-workshop-search.adapter.js";
+import { WorkshopSearchIndexService } from "./modules/workshop/workshop-search-index.service.js";
 import { authorize } from "./shared/middleware/authorize.js";
 import { BullMqQueue, QueueStub } from "./shared/infra/queue.js";
 import { PgDatabase } from "./shared/infra/pgDatabase.js";
@@ -38,6 +40,7 @@ import { NotificationDeliveryWorker } from "./workers/notification-delivery.work
 import { createNotificationRouter } from "./modules/notification/notification.router.js";
 import { createWorkshopPeakRouter } from "./modules/registration/workshop-peak.router.js";
 import type { IQueue } from "./shared/interfaces/IQueue.js";
+import { WorkshopSearchIndexWorker } from "./workers/workshop-search-index.worker.js";
 
 import { CheckinService } from "./modules/checkin/checkin.service.js";
 import { createCheckinRouter } from "./modules/checkin/checkin.router.js";
@@ -52,13 +55,13 @@ const shouldUseRedis: boolean = (process.env.USE_REDIS ?? (shouldStartWorkers ? 
 
 let queue: IQueue;
 let paymentCircuitBreakerStore: IPaymentCircuitBreakerStore;
+const peakControlConfig = loadPeakControllerConfig();
+const peakControlRedis = new Redis(redisUrl, { maxRetriesPerRequest: null, lazyConnect: true });
+const peakAdmissionService = new PeakAdmissionService(peakControlRedis, peakControlConfig);
 
 if (shouldUseRedis) {
   queue = new BullMqQueue(redisUrl);
   const circuitBreakerRedis = new Redis(redisUrl, { maxRetriesPerRequest: null });
-const peakControlRedis = new Redis(redisUrl, { maxRetriesPerRequest: null });
-const peakControlConfig = loadPeakControllerConfig();
-const peakAdmissionService = new PeakAdmissionService(peakControlRedis, peakControlConfig);
   circuitBreakerRedis.on("error", (error: unknown) => {
     // eslint-disable-next-line no-console
     console.error("[payment-circuit-breaker] redis error", error instanceof Error ? error.message : error);
@@ -72,13 +75,16 @@ const peakAdmissionService = new PeakAdmissionService(peakControlRedis, peakCont
 const workshopSummaryRepository = new WorkshopSummaryRepository(database);
 const aiSummaryService = new AiSummaryService(workshopSummaryRepository, new CloudinaryPdfStorage(), new GeminiSummarizer(), queue);
 const aiSummaryWorker = new AiSummaryWorker(aiSummaryService);
+const workshopSearchGateway = new ElasticsearchWorkshopSearchAdapter();
+const workshopSearchIndexService = new WorkshopSearchIndexService(database, workshopSearchGateway);
+const workshopSearchIndexWorker = new WorkshopSearchIndexWorker(workshopSearchIndexService);
 if (shouldStartWorkers && queue instanceof BullMqQueue) {
   queue.startAiSummaryWorker((payload) => aiSummaryWorker.consume(payload));
 }
 
 const adminService: AdminService = new AdminService(queue, database, aiSummaryService);
 const authService: AuthService = new AuthService(database);
-const workshopService = new WorkshopService(adminService);
+const workshopService = new WorkshopService(adminService, workshopSearchGateway);
 const momoAdapter = new MomoAdapter({
   endpoint: process.env.MOMO_ENDPOINT ?? "https://test-payment.momo.vn",
   partnerCode: process.env.MOMO_PARTNER_CODE ?? "",
@@ -120,10 +126,12 @@ if (queue instanceof QueueStub) {
   queue.setAiSummaryHandler((payload) => aiSummaryWorker.consume(payload));
   queue.setRegistrationConfirmedHandler((payload) => registrationConfirmedWorker.consume(payload));
   queue.setNotificationDeliveryHandler((payload) => notificationDeliveryWorker.consume(payload));
+  queue.setWorkshopChangedHandler((payload) => workshopSearchIndexWorker.consume(payload));
 }
 if (shouldStartWorkers && queue instanceof BullMqQueue) {
   queue.startRegistrationConfirmedWorker((payload) => registrationConfirmedWorker.consume(payload));
   queue.startNotificationDeliveryWorker((payload) => notificationDeliveryWorker.consume(payload));
+  queue.startWorkshopChangedWorker((payload) => workshopSearchIndexWorker.consume(payload));
 }
 const checkinService = new CheckinService(database);
 

@@ -2,34 +2,34 @@
 
 - [x] 1.1 Add migration for `workshop_checkins` table with attendance columns, `registration_id` uniqueness, replay-safe device identifiers, and indexes for `workshop_id`/`checked_in_by` (spec: workshop-checkin; design: ADR-CHK-001/ADR-CHK-003).
 - [x] 1.2 Add migration notes for Supabase direct-connection execution order and additive rollback guidance (design: Migration Plan).
-- [ ] 1.3 Manual smoke test: run migrations and verify constraints/indexes on a local or staging database before wiring services (design: Migration Plan).
+- [x] 1.3 Manual smoke test: run migrations and verify constraints/indexes on a local or staging database before wiring services (design: Migration Plan).
 
 ## 2. Backend check-in module scaffolding
 
 - [x] 2.1 Define TypeScript request/response contracts and result/error enums for `POST /checkin/scan` and `POST /checkin/sync` before service logic (spec: workshop-checkin + workshop-checkin-sync; rule: types first).
 - [x] 2.2 Create `checkin` module structure with router/service/types and wire routes in `backend/src/app.ts` behind `authenticate` + `authorize(["checkin_staff"])` (spec: workshop-checkin; design: ADR-CHK-002).
 - [x] 2.3 Introduce narrow read/write interfaces or query helpers for registration/workshop validation and attendance persistence so the check-in module owns attendance logic without violating SRP (design: ADR-CHK-005).
-- [ ] 2.4 Manual smoke test: verify auth and role protection for check-in routes and baseline 401/403 error contracts (spec: workshop-checkin error scenarios).
+- [x] 2.4 Manual smoke test: verify auth and role protection for check-in routes and baseline 401/403 error contracts (spec: workshop-checkin error scenarios).
 
 ## 3. Online scan validation and attendance recording
 
 - [x] 3.1 Implement QR verification flow that validates JWT signature/claims before database lookup using the existing QR token contract (spec: workshop-checkin; design: ADR-CHK-002).
 - [x] 3.2 Implement confirmed-registration and workshop-state eligibility checks, including invalid token, wrong workshop, non-confirmed registration, and cancelled-workshop paths (spec: workshop-checkin invalid/ineligible scenarios).
 - [x] 3.3 Implement durable attendance insert with `ON CONFLICT DO NOTHING` and response mapping for `checked_in` vs `already_checked_in` outcomes (spec: workshop-checkin successful + duplicate scenarios; design: ADR-CHK-003).
-- [ ] 3.4 Manual smoke test: verify successful online scan, duplicate scan idempotency, invalid QR rejection, and workshop mismatch handling (spec: workshop-checkin).
+- [x] 3.4 Manual smoke test: verify successful online scan, duplicate scan idempotency, invalid QR rejection, and workshop mismatch handling (spec: workshop-checkin).
 
 ## 4. Offline sync reconciliation
 
 - [x] 4.1 Define sync payload validation and per-item result mapping for stable `device_scan_id` reconciliation (spec: workshop-checkin-sync; design: ADR-CHK-003/ADR-CHK-004).
 - [x] 4.2 Implement batched `POST /checkin/sync` processing that applies the same business validation as online scan while returning per-item outcomes instead of failing the whole batch for domain errors (spec: workshop-checkin-sync; design: ADR-CHK-004).
 - [x] 4.3 Implement replay-safe dedupe behavior for repeated sync submissions so previously accepted items resolve deterministically without duplicate rows (spec: workshop-checkin-sync replay scenario; design: ADR-CHK-003).
-- [ ] 4.4 Manual smoke test: submit a mixed-result sync batch, replay the same batch, and confirm the device can distinguish clearable vs retryable items (spec: workshop-checkin-sync).
+- [x] 4.4 Manual smoke test: submit a mixed-result sync batch, replay the same batch, and confirm the device can distinguish clearable vs retryable items (spec: workshop-checkin-sync).
 
 ## 5. Attendance reads and admin integration
 
 - [x] 5.1 Replace placeholder dashboard check-in math with persisted attendance totals derived from `workshop_checkins` (spec: checkin-attendance-read organizer dashboard requirement; design: ADR-CHK-005).
 - [x] 5.2 Ensure check-in success and duplicate responses include the persisted `checked_in_at` data needed for door-side staff confirmation without a follow-up read (spec: checkin-attendance-read staff-facing requirement).
-- [ ] 5.3 Manual smoke test: confirm organizer dashboard totals match persisted attendance rows and staff responses show original timestamps for duplicate scans (spec: checkin-attendance-read).
+- [x] 5.3 Manual smoke test: confirm organizer dashboard totals match persisted attendance rows and staff responses show original timestamps for duplicate scans (spec: checkin-attendance-read).
 
 ## 6. Mobile app sync and scan integration
 

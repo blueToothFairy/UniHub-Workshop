@@ -3,6 +3,7 @@ import type {
   NotificationDeliveryQueuePayload,
   RegistrationConfirmedQueuePayload
 } from "../../modules/notification/notification.types.js";
+import type { WorkshopChangedQueuePayload } from "../../modules/workshop/workshop.types.js";
 
 export interface IQueue {
   enqueueWorkshopChanged(workshopId: string, reason: string): Promise<void>;
@@ -10,3 +11,5 @@ export interface IQueue {
   enqueueRegistrationConfirmed(payload: RegistrationConfirmedQueuePayload): Promise<void>;
   enqueueNotificationDelivery(payload: NotificationDeliveryQueuePayload): Promise<void>;
 }
+
+export type WorkshopChangedHandler = (payload: WorkshopChangedQueuePayload) => Promise<void>;

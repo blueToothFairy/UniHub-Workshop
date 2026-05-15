@@ -1,5 +1,6 @@
 export type WorkshopStatus = "draft" | "published" | "cancelled";
 export type SummaryStatus = "idle" | "processing" | "ready" | "fallback" | "failed";
+export type WorkshopDiscoveryPaymentFilter = "all" | "free" | "paid";
 
 export interface Workshop {
   id: string;
@@ -24,6 +25,16 @@ export interface Workshop {
   summaryErrorCode: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface WorkshopListItem extends Workshop {
+  location: string;
+}
+
+export interface WorkshopDiscoveryQuery {
+  q: string;
+  payment: WorkshopDiscoveryPaymentFilter;
+  availableOnly: boolean;
 }
 
 export interface UploadWorkshopPdfResponse {

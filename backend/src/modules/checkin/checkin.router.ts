@@ -6,6 +6,30 @@ import type { CheckinScanRequest, CheckinSyncRequest } from "./checkin.types.js"
 export function createCheckinRouter(checkinService: CheckinService): Router {
   const router = Router();
 
+  router.get("/roster", async (req: Request, res: Response) => {
+    try {
+      const workshopId = String(req.query.workshop_id ?? "").trim();
+      if (!workshopId) {
+        throw new AppError(400, "WORKSHOP_ID_REQUIRED", "workshop_id is required");
+      }
+      const after = typeof req.query.after === "string" ? req.query.after : undefined;
+      const data = await checkinService.getRoster(workshopId, after);
+      res.json({ data });
+    } catch (error: unknown) {
+      handleError(error, res);
+    }
+  });
+
+  router.get("/cancelled-since", async (req: Request, res: Response) => {
+    try {
+      const after = typeof req.query.after === "string" ? req.query.after : undefined;
+      const data = await checkinService.getCancelledSince(after);
+      res.json({ data });
+    } catch (error: unknown) {
+      handleError(error, res);
+    }
+  });
+
   router.post("/scan", async (req: Request, res: Response) => {
     try {
       const payload = req.body as CheckinScanRequest;

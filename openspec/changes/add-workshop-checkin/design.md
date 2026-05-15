@@ -14,6 +14,7 @@ Because the event environment includes unstable connectivity and repeated scans 
 **Goals:**
 - Add a dedicated `checkin` module that validates existing QR JWTs and records one authoritative attendance event per registration/workshop.
 - Support two staff flows: online scan submission and batched offline sync replay from Expo SQLite.
+- Make workshop selection faster on staff devices by allowing offline search over cached workshops by title/room.
 - Keep check-in idempotent so duplicate scans or sync retries do not create duplicate attendance rows.
 - Provide real attendance counts for organizer dashboards and staff confirmation responses.
 - Preserve the current registration QR contract so this change composes with the existing registration flow instead of replacing it.
@@ -21,6 +22,7 @@ Because the event environment includes unstable connectivity and repeated scans 
 **Non-Goals:**
 - Redesigning registration issuance, payment logic, or JWT signing format beyond what is necessary for verification.
 - Shipping advanced organizer analytics, attendance exports, or manual override workflows.
+- Adding advanced workshop discovery filters/sorting on mobile beyond a single offline search box.
 - Adding a new paid service, background container, or real-time websocket channel for check-in.
 - Solving device enrollment, push notifications, or anti-fraud controls beyond basic token validation and duplicate protection.
 
@@ -128,6 +130,20 @@ There is some extra query/mapping code, but it avoids a future tangle where dash
 
 - Keep admin’s placeholder percentage until later.
   Rejected because it would make the new capability look complete while still showing incorrect numbers.
+
+### ADR-CHK-MOB-001: Workshop picker search filters cached workshops offline
+
+**Decision**
+
+When selecting a workshop in the staff mobile app, the workshop picker provides a single text search input that filters the locally cached workshop list (Expo SQLite) by workshop `title` and `room/location`. Search works fully offline and does not require network calls.
+
+**Reason**
+
+Events often have many workshops, and staff devices are frequently offline or on unstable networks. Filtering the cached list keeps the UX fast and reliable while reducing dependence on backend search availability.
+
+**Trade-off**
+
+Offline search is limited to fields already cached on-device (title + room/location). More advanced discovery (speaker/description) is out of scope for this change.
 
 ## Sequence Diagrams
 

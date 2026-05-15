@@ -263,7 +263,7 @@ export async function enqueuePendingCheckin(
     `INSERT OR IGNORE INTO checkins (
       id, device_scan_id, qr_token, registration_id, workshop_id, student_name, student_id, staff_code, checked_in_at,
       scanned_at_device, status, device_id, sync_result, retry_count, last_error_code, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending_sync', ?, NULL, 0, NULL, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_sync', ?, NULL, 0, NULL, ?, ?)`,
     record.id,
     record.device_scan_id,
     record.qr_token,

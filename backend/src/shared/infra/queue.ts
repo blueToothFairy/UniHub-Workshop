@@ -5,24 +5,29 @@ import type {
   NotificationDeliveryQueuePayload,
   RegistrationConfirmedQueuePayload
 } from "../../modules/notification/notification.types.js";
+import type { WorkshopChangedQueuePayload } from "../../modules/workshop/workshop.types.js";
 import type { IQueue } from "../interfaces/IQueue.js";
 
 const AI_SUMMARY_QUEUE_NAME = "ai-summary.generate";
 const REGISTRATION_CONFIRMED_QUEUE_NAME = "notification.registration-confirmed";
 const NOTIFICATION_DELIVERY_QUEUE_NAME = "notification.delivery";
+const WORKSHOP_CHANGED_QUEUE_NAME = "workshop.changed";
 
 type AiSummaryHandler = (payload: AiSummaryJobPayload) => Promise<void>;
 type RegistrationConfirmedHandler = (payload: RegistrationConfirmedQueuePayload) => Promise<void>;
 type NotificationDeliveryHandler = (payload: NotificationDeliveryQueuePayload) => Promise<void>;
+type WorkshopChangedHandler = (payload: WorkshopChangedQueuePayload) => Promise<void>;
 
 export class BullMqQueue implements IQueue {
   private readonly connection: Redis;
   private readonly aiSummaryQueue: Queue<AiSummaryJobPayload>;
   private readonly registrationConfirmedQueue: Queue<RegistrationConfirmedQueuePayload>;
   private readonly notificationDeliveryQueue: Queue<NotificationDeliveryQueuePayload>;
+  private readonly workshopChangedQueue: Queue<WorkshopChangedQueuePayload>;
   private aiSummaryWorker?: Worker<AiSummaryJobPayload>;
   private registrationConfirmedWorker?: Worker<RegistrationConfirmedQueuePayload>;
   private notificationDeliveryWorker?: Worker<NotificationDeliveryQueuePayload>;
+  private workshopChangedWorker?: Worker<WorkshopChangedQueuePayload>;
 
   public constructor(redisUrl: string) {
     this.connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
@@ -33,10 +38,18 @@ export class BullMqQueue implements IQueue {
     this.aiSummaryQueue = new Queue<AiSummaryJobPayload>(AI_SUMMARY_QUEUE_NAME, { connection: this.connection });
     this.registrationConfirmedQueue = new Queue<RegistrationConfirmedQueuePayload>(REGISTRATION_CONFIRMED_QUEUE_NAME, { connection: this.connection });
     this.notificationDeliveryQueue = new Queue<NotificationDeliveryQueuePayload>(NOTIFICATION_DELIVERY_QUEUE_NAME, { connection: this.connection });
+    this.workshopChangedQueue = new Queue<WorkshopChangedQueuePayload>(WORKSHOP_CHANGED_QUEUE_NAME, { connection: this.connection });
   }
 
-  public async enqueueWorkshopChanged(_workshopId: string, _reason: string): Promise<void> {
-    return Promise.resolve();
+  public async enqueueWorkshopChanged(workshopId: string, reason: string): Promise<void> {
+    const options: JobsOptions = {
+      attempts: 3,
+      backoff: { type: "fixed", delay: 15_000 },
+      removeOnComplete: true,
+      removeOnFail: false
+    };
+
+    await this.workshopChangedQueue.add(`workshop-changed:${workshopId}:${Date.now()}`, { workshopId, reason }, options);
   }
 
   public async enqueueAiSummaryGenerate(payload: AiSummaryJobPayload): Promise<void> {
@@ -103,13 +116,25 @@ export class BullMqQueue implements IQueue {
     );
   }
 
+  public startWorkshopChangedWorker(handler: WorkshopChangedHandler): void {
+    this.workshopChangedWorker = new Worker<WorkshopChangedQueuePayload>(
+      WORKSHOP_CHANGED_QUEUE_NAME,
+      async (job) => {
+        await handler(job.data);
+      },
+      { connection: this.connection }
+    );
+  }
+
   public async close(): Promise<void> {
     await this.aiSummaryWorker?.close();
     await this.registrationConfirmedWorker?.close();
     await this.notificationDeliveryWorker?.close();
+    await this.workshopChangedWorker?.close();
     await this.aiSummaryQueue.close();
     await this.registrationConfirmedQueue.close();
     await this.notificationDeliveryQueue.close();
+    await this.workshopChangedQueue.close();
     await this.connection.quit();
   }
 }
@@ -118,13 +143,20 @@ export class QueueStub implements IQueue {
   private aiSummaryHandler?: AiSummaryHandler;
   private registrationConfirmedHandler?: RegistrationConfirmedHandler;
   private notificationDeliveryHandler?: NotificationDeliveryHandler;
+  private workshopChangedHandler?: WorkshopChangedHandler;
 
   public setAiSummaryHandler(handler: AiSummaryHandler): void {
     this.aiSummaryHandler = handler;
   }
 
-  public async enqueueWorkshopChanged(_workshopId: string, _reason: string): Promise<void> {
-    return Promise.resolve();
+  public setWorkshopChangedHandler(handler: WorkshopChangedHandler): void {
+    this.workshopChangedHandler = handler;
+  }
+
+  public async enqueueWorkshopChanged(workshopId: string, reason: string): Promise<void> {
+    if (this.workshopChangedHandler) {
+      await this.workshopChangedHandler({ workshopId, reason });
+    }
   }
 
   public async enqueueAiSummaryGenerate(payload: AiSummaryJobPayload): Promise<void> {

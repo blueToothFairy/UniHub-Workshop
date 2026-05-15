@@ -1,13 +1,18 @@
 import { Router, type Request, type Response } from "express";
+import type { ParsedQs } from "qs";
 import { AppError } from "../../shared/errors/AppError.js";
 import type { WorkshopService } from "./workshop.service.js";
 
 export function createWorkshopRouter(workshopService: WorkshopService): Router {
   const router = Router();
 
-  router.get("/", async (_req: Request, res: Response) => {
+  router.get("/", async (req: Request, res: Response) => {
     try {
-      const data = await workshopService.listWorkshopsForThisMonth();
+      const data = await workshopService.listWorkshopsForThisMonth({
+        q: toStringOrStringArray(req.query.q),
+        payment: toStringOrStringArray(req.query.payment),
+        available_only: toStringOrStringArray(req.query.available_only)
+      });
       res.json({ data });
     } catch (error: unknown) {
       handleError(error, res);
@@ -37,6 +42,14 @@ export function createWorkshopRouter(workshopService: WorkshopService): Router {
   });
 
   return router;
+}
+
+function toStringOrStringArray(input: unknown): string | string[] | undefined {
+  if (typeof input === "string") return input;
+  if (Array.isArray(input) && input.every((item) => typeof item === "string")) {
+    return input;
+  }
+  return undefined;
 }
 
 function handleError(error: unknown, res: Response): void {
