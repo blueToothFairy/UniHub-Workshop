@@ -1,6 +1,14 @@
 "use client";
 
-import { ApiRequestError, getWorkshopPublic, registrationApi, type CreateRegistrationResult, type RegistrationPaymentStatus, type RegistrationQrData } from "@/lib/api";
+import {
+  ApiRequestError,
+  getWorkshopPublic,
+  registrationApi,
+  type CreateRegistrationResult,
+  type RegistrationGateResponse,
+  type RegistrationPaymentStatus,
+  type RegistrationQrData
+} from "@/lib/api";
 import type { Workshop } from "@/types/admin";
 import { useEffect, useMemo, useState } from "react";
 
@@ -51,6 +59,24 @@ function clearIdempotencyKey(workshopId: string, accessToken: string): void {
   window.localStorage.removeItem(getIdempotencyStorageKey(workshopId, accessToken));
 }
 
+function formatWorkshopDateTimeRange(startsAt: string, endsAt: string): string {
+  try {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    const dateLabel = start.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "2-digit",
+      year: "numeric"
+    });
+    const startTimeLabel = start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    const endTimeLabel = end.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    return `${dateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
+  } catch {
+    return `${startsAt} - ${endsAt}`;
+  }
+}
+
 export default function StudentWorkshopDetailPage({ params }: Props) {
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [registration, setRegistration] = useState<CreateRegistrationResult | null>(null);
@@ -60,6 +86,8 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [isPolling, setIsPolling] = useState<boolean>(false);
+  const [gateState, setGateState] = useState<RegistrationGateResponse | null>(null);
+  const [admissionToken, setAdmissionToken] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -114,6 +142,14 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
               throw regErr;
             }
           }
+          try {
+            const gate = await registrationApi.getRegistrationGate(token, params.id);
+            if (mounted) {
+              setGateState(gate);
+            }
+          } catch {
+            // Gate checks are best-effort; registration flow can still handle server responses.
+          }
         }
       } catch (e) {
         if (mounted) setError(e instanceof Error ? e.message : "Failed to load workshop");
@@ -130,7 +166,11 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
     () => registration?.registration_status === "confirmed" || registration?.registration_status === "pending_payment",
     [registration]
   );
-  const canRegister = useMemo(() => Boolean(workshop && workshop.availableSeats > 0 && !hasActiveRegistration), [workshop, hasActiveRegistration]);
+  const isGateWaiting = gateState?.status === "waiting";
+  const canRegister = useMemo(
+    () => Boolean(workshop && workshop.availableSeats > 0 && !hasActiveRegistration && !isGateWaiting),
+    [workshop, hasActiveRegistration, isGateWaiting]
+  );
   const hasPendingPayment = registration?.registration_status === "pending_payment";
 
   async function pollPaymentStatus(registrationId: string): Promise<void> {
@@ -159,10 +199,32 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
       const token = readCookie("access_token");
       if (!token) throw new Error("Please login as student first");
       const idempotencyKey = getOrCreateIdempotencyKey(params.id, token);
-      const created = await registrationApi.createRegistration(token, params.id, idempotencyKey);
+      let tokenToUse = admissionToken;
+      if (!tokenToUse) {
+        const admission = await registrationApi.requestAdmission(token, params.id);
+        setGateState(admission as RegistrationGateResponse);
+        if (admission.status === "full") {
+          setError("Workshop is full.");
+          return;
+        }
+        if (admission.status === "waiting") {
+          setError(`You are in queue (position ${admission.queue_position}). Please wait for admission.`);
+          return;
+        }
+        if (admission.status === "admitted") {
+          tokenToUse = admission.admission_token;
+          setAdmissionToken(admission.admission_token);
+        }
+      }
+
+      const created = tokenToUse
+        ? await registrationApi.createRegistrationWithAdmission(token, params.id, idempotencyKey, tokenToUse)
+        : await registrationApi.createRegistration(token, params.id, idempotencyKey);
       setRegistration(created);
+      setGateState({ status: "open" });
       if (created.registration_status === "confirmed") {
         clearIdempotencyKey(params.id, token);
+        setAdmissionToken(null);
       } else {
         setPaymentStatus({
           registration_id: created.registration_id,
@@ -186,11 +248,56 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
         setError(`${e.message}.${retryText}`);
         return;
       }
+      if (e instanceof ApiRequestError && e.code === "RATE_LIMITED") {
+        const retryText = e.retryAfterSeconds ? ` Retry in about ${e.retryAfterSeconds} seconds.` : "";
+        setError(`You are sending requests too quickly.${retryText}`);
+        return;
+      }
+      if (e instanceof ApiRequestError && e.code === "REGISTRATION_BUSY") {
+        const retryText = e.retryAfterSeconds ? ` Retry in about ${e.retryAfterSeconds} seconds.` : "";
+        setError(`System is busy handling peak registrations.${retryText}`);
+        return;
+      }
       setError(e instanceof Error ? e.message : "Failed to register");
     } finally {
       setSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    if (!gateState || gateState.status !== "waiting") return;
+    if (hasActiveRegistration) return;
+    const token = readCookie("access_token");
+    if (!token) return;
+
+    let cancelled = false;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
+    const poll = async () => {
+      try {
+        const admission = await registrationApi.requestAdmission(token, params.id);
+        if (cancelled) return;
+        setGateState(admission as RegistrationGateResponse);
+        if (admission.status === "admitted") {
+          setAdmissionToken(admission.admission_token);
+          return;
+        }
+      } catch {
+        // keep waiting UI resilient; manual retry remains available
+      }
+      const baseMs = (gateState.retry_after ?? 5) * 1000;
+      const jitterMs = Math.floor(Math.random() * 1200);
+      timeout = setTimeout(() => {
+        void poll();
+      }, baseMs + jitterMs);
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [gateState, hasActiveRegistration, params.id]);
 
   async function handleContinuePayment(): Promise<void> {
     const url = registration?.registration_status === "pending_payment" ? registration.payment_url : paymentStatus?.payment_url;
@@ -258,6 +365,8 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
           <h1 style={{ margin: 0 }}>{workshop.title}</h1>
           <p>{workshop.description}</p>
           <p><strong>Speaker:</strong> {workshop.speakerName}</p>
+          <p><strong>Schedule:</strong> {formatWorkshopDateTimeRange(workshop.startsAt, workshop.endsAt)}</p>
+          <p><strong>Room:</strong> {workshop.room}</p>
           <p>
             <strong>Summary status:</strong>{" "}
             <span className={`status-pill ${workshop.summaryStatus === "ready" ? "status-success" : workshop.summaryStatus === "processing" ? "status-pending" : "status-fallback"}`}>
@@ -273,9 +382,42 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
 
           {!confirmed && (
             <button className="btn btn-primary" disabled={!canRegister || submitting} onClick={() => void handleRegister()}>
-              {submitting ? "Submitting..." : canRegister ? "Register workshop" : hasActiveRegistration ? "Already registered" : "Workshop full"}
+              {submitting
+                ? "Submitting..."
+                : isGateWaiting
+                  ? "Waiting for admission"
+                  : canRegister
+                    ? "Register workshop"
+                    : hasActiveRegistration
+                      ? "Already registered"
+                      : "Workshop full"}
             </button>
           )}
+
+          {gateState?.status === "waiting" ? (
+            <article className="card">
+              <h3>Waiting Room</h3>
+              <p>Queue position: {gateState.queue_position}</p>
+              <p>We will check again every {gateState.retry_after} seconds.</p>
+              <button
+                className="btn"
+                disabled={submitting}
+                onClick={() => {
+                  const token = readCookie("access_token");
+                  if (!token) return;
+                  void (async () => {
+                    const admission = await registrationApi.requestAdmission(token, params.id);
+                    setGateState(admission as RegistrationGateResponse);
+                    if (admission.status === "admitted") {
+                      setAdmissionToken(admission.admission_token);
+                    }
+                  })();
+                }}
+              >
+                Refresh queue status
+              </button>
+            </article>
+          ) : null}
 
           {pendingPayment && workshop.paymentRequired ? (
             <article className="card">

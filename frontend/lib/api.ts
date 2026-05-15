@@ -68,6 +68,20 @@ export interface RegistrationQrData {
   qr_issued_at: string;
 }
 
+export type RegistrationGateResponse =
+  | { status: "disabled" }
+  | { status: "open" }
+  | { status: "full" }
+  | { status: "admitted"; retry_after: number }
+  | { status: "waiting"; queue_position: number; retry_after: number };
+
+export type AdmissionResponse =
+  | { status: "disabled" }
+  | { status: "open" }
+  | { status: "full" }
+  | { status: "waiting"; queue_position: number; retry_after: number }
+  | { status: "admitted"; admission_token: string; expires_in: number };
+
 export interface CurrentRegistrationData {
   registration_id: string;
   workshop_id: string;
@@ -304,12 +318,28 @@ export const adminApi = {
 export const registrationApi = {
   createRegistration: (token: string, workshopId: string, idempotencyKey: string): Promise<CreateRegistrationResult> =>
     apiPostWithHeaders<CreateRegistrationResult>("/registrations", token, { workshop_id: workshopId }, { "Idempotency-Key": idempotencyKey }),
+  createRegistrationWithAdmission: (
+    token: string,
+    workshopId: string,
+    idempotencyKey: string,
+    admissionToken: string
+  ): Promise<CreateRegistrationResult> =>
+    apiPostWithHeaders<CreateRegistrationResult>(
+      "/registrations",
+      token,
+      { workshop_id: workshopId },
+      { "Idempotency-Key": idempotencyKey, "Admission-Token": admissionToken }
+    ),
   getPaymentStatus: (token: string, registrationId: string): Promise<RegistrationPaymentStatus> =>
     apiGet<RegistrationPaymentStatus>(`/registrations/${registrationId}/payment-status`, token),
   getRegistrationQr: (token: string, registrationId: string): Promise<RegistrationQrData> =>
     apiGet<RegistrationQrData>(`/registrations/${registrationId}/qr`, token),
   getCurrentRegistrationByWorkshop: (token: string, workshopId: string): Promise<CurrentRegistrationData> =>
-    apiGet<CurrentRegistrationData>(`/registrations/workshops/${workshopId}/current`, token)
+    apiGet<CurrentRegistrationData>(`/registrations/workshops/${workshopId}/current`, token),
+  getRegistrationGate: (token: string, workshopId: string): Promise<RegistrationGateResponse> =>
+    apiGet<RegistrationGateResponse>(`/workshops/${workshopId}/registration-gate`, token),
+  requestAdmission: (token: string, workshopId: string): Promise<AdmissionResponse> =>
+    apiPost<AdmissionResponse>(`/workshops/${workshopId}/admission`, token, {})
 };
 
 export const notificationApi = {
