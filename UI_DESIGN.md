@@ -54,8 +54,12 @@ Shadows:
   - rounded (`16px`), bordered, semi-elevated.
 - Notification inbox dropdown:
   - Opens from header icon and uses a scrollable list container (fixed max-height + vertical overflow).
-  - Unread items must be visually elevated using stronger border/background/shadow and bolder title text.
-  - Avoid pill-style unread chips inside each item; prefer card emphasis for unread state.
+  - Unread items must be visually elevated using richer gradients/depth and bolder title text.
+  - Avoid pill-style unread chips and avoid thin-outline-only cards; prefer solid blocks and shadow hierarchy.
+- Workshop list cards:
+  - Avoid showing long descriptions in the workshop grid card.
+  - Prioritize concise metadata: date/time, speaker, room, and availability.
+  - Use expressive card surfaces (gradient + accent edge), not thin-border-only blocks.
 - Data tables:
   - compact header, subtle row hover, border separators.
 - Status badges:

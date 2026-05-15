@@ -59,6 +59,24 @@ function clearIdempotencyKey(workshopId: string, accessToken: string): void {
   window.localStorage.removeItem(getIdempotencyStorageKey(workshopId, accessToken));
 }
 
+function formatWorkshopDateTimeRange(startsAt: string, endsAt: string): string {
+  try {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    const dateLabel = start.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "2-digit",
+      year: "numeric"
+    });
+    const startTimeLabel = start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    const endTimeLabel = end.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    return `${dateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
+  } catch {
+    return `${startsAt} - ${endsAt}`;
+  }
+}
+
 export default function StudentWorkshopDetailPage({ params }: Props) {
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [registration, setRegistration] = useState<CreateRegistrationResult | null>(null);
@@ -347,6 +365,8 @@ export default function StudentWorkshopDetailPage({ params }: Props) {
           <h1 style={{ margin: 0 }}>{workshop.title}</h1>
           <p>{workshop.description}</p>
           <p><strong>Speaker:</strong> {workshop.speakerName}</p>
+          <p><strong>Schedule:</strong> {formatWorkshopDateTimeRange(workshop.startsAt, workshop.endsAt)}</p>
+          <p><strong>Room:</strong> {workshop.room}</p>
           <p>
             <strong>Summary status:</strong>{" "}
             <span className={`status-pill ${workshop.summaryStatus === "ready" ? "status-success" : workshop.summaryStatus === "processing" ? "status-pending" : "status-fallback"}`}>

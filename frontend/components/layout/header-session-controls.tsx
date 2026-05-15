@@ -219,6 +219,7 @@ export function HeaderSessionControls({ initialAuthenticated }: HeaderSessionCon
               </button>
             </header>
 
+            <p className="notification-meta">Unread now: <strong>{unreadCount}</strong></p>
             {loading ? <p className="notification-meta">Loading notifications...</p> : null}
             {!loading && items.length === 0 ? <p className="notification-meta">No notifications yet.</p> : null}
 
@@ -231,7 +232,9 @@ export function HeaderSessionControls({ initialAuthenticated }: HeaderSessionCon
                 >
                   <div className="notification-item-top">
                     <p className="notification-title">{item.title}</p>
-                    {!item.is_read ? <span className="notification-new-tag">NEW</span> : null}
+                    <span className={`notification-state-tag ${item.is_read ? "is-read" : "is-unread"}`}>
+                      {item.is_read ? "Read" : "New"}
+                    </span>
                   </div>
                   <p className="notification-date">{new Date(item.created_at).toLocaleString()}</p>
                   <p className="notification-body">{item.body}</p>

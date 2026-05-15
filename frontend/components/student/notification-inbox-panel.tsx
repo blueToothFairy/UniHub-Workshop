@@ -98,13 +98,13 @@ export function NotificationInboxPanel(): JSX.Element {
     <article className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
         <h3 style={{ margin: 0 }}>Notifications</h3>
-        <span className={`status-pill ${unreadCount > 0 ? "status-pending" : "status-fallback"}`}>
+        <span className={`notification-state-tag ${unreadCount > 0 ? "is-unread" : "is-read"}`}>
           {unreadCount} unread
         </span>
       </div>
       <div style={{ marginTop: 12, marginBottom: 12 }}>
         <button
-          className="btn btn-secondary"
+          className="notification-refresh"
           disabled={loading || refreshing}
           onClick={() => {
             setRefreshing(true);
@@ -118,21 +118,21 @@ export function NotificationInboxPanel(): JSX.Element {
       {loading ? <p>Loading notifications...</p> : null}
       {!loading && items.length === 0 ? <p className="muted">No notifications yet.</p> : null}
 
-      <div className="grid">
+      <div className="notification-scroll">
         {items.map((item) => (
-          <article key={item.id} className="card">
+          <article key={item.id} className={`notification-item ${item.is_read ? "is-read" : "is-unread"}`}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 8 }}>
               <div>
-                <p style={{ margin: 0, fontWeight: 700 }}>{item.title}</p>
-                <p className="muted" style={{ marginTop: 6, marginBottom: 6 }}>{new Date(item.created_at).toLocaleString()}</p>
+                <p className="notification-title">{item.title}</p>
+                <p className="notification-date">{new Date(item.created_at).toLocaleString()}</p>
               </div>
-              <span className={`status-pill ${item.is_read ? "status-success" : "status-pending"}`}>
-                {item.is_read ? "Read" : "Unread"}
+              <span className={`notification-state-tag ${item.is_read ? "is-read" : "is-unread"}`}>
+                {item.is_read ? "Read" : "New"}
               </span>
             </div>
-            <p style={{ marginTop: 8 }}>{item.body}</p>
+            <p className="notification-body">{item.body}</p>
             {!item.is_read ? (
-              <button className="btn" disabled={markingId === item.id} onClick={() => void handleMarkRead(item.id)}>
+              <button className="notification-mark-read" disabled={markingId === item.id} onClick={() => void handleMarkRead(item.id)}>
                 {markingId === item.id ? "Updating..." : "Mark as read"}
               </button>
             ) : null}
@@ -144,4 +144,3 @@ export function NotificationInboxPanel(): JSX.Element {
     </article>
   );
 }
-

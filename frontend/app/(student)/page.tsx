@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import type { ReactElement } from "react";
 import { getWorkshopsThisMonth } from "@/lib/api";
 
@@ -7,10 +7,19 @@ export default async function StudentHomePage(): Promise<ReactElement> {
   const workshops = payload.workshops ?? [];
   const stats = payload.stats ?? { workshopsThisMonth: 0, registrationsThisMonth: 0 };
 
-  function formatStart(at?: string) {
-    if (!at) return "";
+  function formatDateLabel(at?: string): string {
+    if (!at) return "Date unavailable";
     try {
-      return new Date(at).toLocaleString(undefined, { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      return new Date(at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "2-digit", year: "numeric" });
+    } catch {
+      return at;
+    }
+  }
+
+  function formatTimeLabel(at?: string): string {
+    if (!at) return "Time TBD";
+    try {
+      return new Date(at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
     } catch {
       return at;
     }
@@ -42,14 +51,19 @@ export default async function StudentHomePage(): Promise<ReactElement> {
         <div className="container">
           <h2>Available Workshops</h2>
           <p className="muted">Explore our upcoming sessions this month. Click a workshop to view details.</p>
-          <div className="card-grid">
+          <div className="card-grid workshop-showcase-grid">
             {workshops.map((w) => (
-              <article key={w.id} className="card">
-                <h3 style={{ marginTop: 0 }}>{w.title}</h3>
-                <p className="muted">{formatStart(w.startsAt)}</p>
-                <p style={{ minHeight: 48 }}>{w.description?.slice(0, 120)}</p>
-                <div style={{ marginTop: 12 }}>
-                  <Link href={`/workshops/${w.id}`} className="btn btn-primary">View Details</Link>
+              <article key={w.id} className="workshop-showcase-card">
+                <p className="workshop-showcase-date">{formatDateLabel(w.startsAt)}</p>
+                <h3 className="workshop-showcase-title">{w.title}</h3>
+                <div className="workshop-showcase-meta">
+                  <p><strong>Time:</strong> {formatTimeLabel(w.startsAt)}</p>
+                  <p><strong>Speaker:</strong> {w.speakerName}</p>
+                  <p><strong>Room:</strong> {w.room}</p>
+                </div>
+                <div className="workshop-showcase-footer">
+                  <p className="workshop-seat-availability">{w.availableSeats} seats available</p>
+                  <Link href={`/workshops/${w.id}`} className="workshop-showcase-link">View details</Link>
                 </div>
               </article>
             ))}
