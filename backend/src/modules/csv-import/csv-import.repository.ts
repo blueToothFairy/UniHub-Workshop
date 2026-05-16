@@ -110,6 +110,9 @@ export class CsvImportRepository implements CsvImportRepositoryContract {
       return { insertedRows: 0, updatedRows: 0 };
     }
 
+    const bcryptRounds = parseBcryptRounds();
+    const passwordHashes = await Promise.all(rows.map((row) => bcrypt.hash(row.studentId, bcryptRounds)));
+
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
@@ -117,7 +120,8 @@ export class CsvImportRepository implements CsvImportRepositoryContract {
         `CREATE TEMP TABLE tmp_csv_students (
            student_id TEXT NOT NULL,
            email TEXT NOT NULL,
-           full_name TEXT NOT NULL
+           full_name TEXT NOT NULL,
+           password_hash TEXT NOT NULL
          ) ON COMMIT DROP`
       );
 
@@ -126,18 +130,24 @@ export class CsvImportRepository implements CsvImportRepositoryContract {
         const chunk = rows.slice(index, index + chunkSize);
         const valuesClause = chunk
           .map((_row, chunkIndex) => {
-            const base = chunkIndex * 3;
-            return `($${base + 1}, $${base + 2}, $${base + 3})`;
+            const base = chunkIndex * 4;
+            return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`;
           })
           .join(", ");
-        const params = chunk.flatMap((row) => [row.studentId, row.email, row.fullName]);
+        const params = chunk.flatMap((row, chunkIndex) => [
+          row.studentId,
+          row.email,
+          row.fullName,
+          passwordHashes[index + chunkIndex]
+        ]);
         await client.query(
-          `INSERT INTO tmp_csv_students (student_id, email, full_name)
+          `INSERT INTO tmp_csv_students (student_id, email, full_name, password_hash)
            VALUES ${valuesClause}`,
           params
         );
       }
 
+      // Match existing students by student_id first, then by email (covers self-registered rows with student_id NULL).
       const updateResult = await client.query(
         `WITH matched AS (
            SELECT DISTINCT ON (u.id)
@@ -158,64 +168,44 @@ export class CsvImportRepository implements CsvImportRepositoryContract {
          SET student_id = matched.student_id,
              email = matched.email,
              full_name = matched.full_name,
-             updated_at = $1
+             updated_at = $1::timestamptz
          FROM matched
          WHERE u.id = matched.user_id`,
         [importedAt]
       );
 
-      const bcryptRounds = parseBcryptRounds();
-      const existingResult = await client.query<{
-        student_id: string;
-      }>(
-        `SELECT t.student_id
+      // Insert rows with no matching student account yet (new email + new student_id in users).
+      const insertResult = await client.query(
+        `INSERT INTO users (
+           id, email, full_name, role, student_id, password_hash,
+           force_change_password, created_at, updated_at
+         )
+         SELECT
+           gen_random_uuid(),
+           t.email,
+           t.full_name,
+           'student',
+           t.student_id,
+           t.password_hash,
+           true,
+           $1::timestamptz,
+           $1::timestamptz
          FROM tmp_csv_students t
-         JOIN users u
-           ON u.role = 'student'
-          AND (
-            u.student_id = t.student_id
-            OR LOWER(u.email) = LOWER(t.email)
-          )`
-      );
-      const existingStudentIds = new Set(existingResult.rows.map((row) => row.student_id));
-      const newRows = rows.filter((row) => !existingStudentIds.has(row.studentId));
-
-      if (newRows.length > 0) {
-        const hashedPasswords = await Promise.all(
-          newRows.map((row) => bcrypt.hash(row.studentId, bcryptRounds))
-        );
-
-        for (let index = 0; index < newRows.length; index += chunkSize) {
-          const chunk = newRows.slice(index, index + chunkSize);
-          const valuesClause = chunk
-            .map((_row, chunkIndex) => {
-              const base = chunkIndex * 8;
-              return `($${base + 1}, $${base + 2}, $${base + 3}, 'student', $${base + 4}, $${base + 5}, true, $${base + 6}, $${base + 7})`;
-            })
-            .join(", ");
-          const params = chunk.flatMap((row, chunkIndex) => [
-            randomUUID(),
-            row.email,
-            row.fullName,
-            row.studentId,
-            hashedPasswords[index + chunkIndex],
-            importedAt,
-            importedAt
-          ]);
-          await client.query(
-            `INSERT INTO users (
-               id, email, full_name, role, student_id, password_hash,
-               force_change_password, created_at, updated_at
+         WHERE NOT EXISTS (
+           SELECT 1
+           FROM users u
+           WHERE u.role = 'student'
+             AND (
+               u.student_id = t.student_id
+               OR LOWER(u.email) = LOWER(t.email)
              )
-             VALUES ${valuesClause}`,
-            params
-          );
-        }
-      }
+         )`,
+        [importedAt]
+      );
 
       await client.query("COMMIT");
       return {
-        insertedRows: newRows.length,
+        insertedRows: insertResult.rowCount ?? 0,
         updatedRows: updateResult.rowCount ?? 0
       };
     } catch (error) {
