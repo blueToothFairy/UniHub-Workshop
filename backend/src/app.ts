@@ -44,6 +44,9 @@ import { WorkshopSearchIndexWorker } from "./workers/workshop-search-index.worke
 
 import { CheckinService } from "./modules/checkin/checkin.service.js";
 import { createCheckinRouter } from "./modules/checkin/checkin.router.js";
+import { CsvImportRepository } from "./modules/csv-import/csv-import.repository.js";
+import { CsvImportService } from "./modules/csv-import/csv-import.service.js";
+import { registerCsvImportJobs } from "./modules/csv-import/csv-import.cron.js";
 
 const app: Express = express();
 const allowedOrigins: string[] = (process.env.ALLOWED_ORIGINS ?? "http://localhost:3001").split(",").map((s) => s.trim());
@@ -134,6 +137,10 @@ if (shouldStartWorkers && queue instanceof BullMqQueue) {
   queue.startWorkshopChangedWorker((payload) => workshopSearchIndexWorker.consume(payload));
 }
 const checkinService = new CheckinService(database);
+const csvImportService = new CsvImportService({
+  repository: new CsvImportRepository(database)
+});
+const csvImportJobs = registerCsvImportJobs(csvImportService);
 
 app.use(
   cors({
@@ -169,5 +176,9 @@ app.listen(port, () => {
   if (!shouldStartWorkers) {
     // eslint-disable-next-line no-console
     console.log("Workers disabled (set START_WORKERS=true to enable BullMQ workers).");
+  }
+  if (csvImportJobs.jobs.length === 0) {
+    // eslint-disable-next-line no-console
+    console.log("CSV import schedules disabled (set CSV_IMPORT_ENABLED=true to enable nightly/evening imports).");
   }
 });
