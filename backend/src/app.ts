@@ -24,6 +24,7 @@ import { PeakAdmissionService } from "./modules/registration/peak-admission.serv
 import { loadPeakControllerConfig } from "./modules/registration/peak-controller.config.js";
 import { MomoAdapter } from "./modules/payment/momo.adapter.js";
 import { createPaymentRouter } from "./modules/payment/payment.router.js";
+import { registerPaymentReconciliationCron } from "./modules/payment/payment-reconciliation.cron.js";
 import { Redis } from "ioredis";
 import { PaymentCircuitBreaker } from "./modules/payment/payment-circuit-breaker.service.js";
 import {
@@ -114,6 +115,7 @@ const registrationService = new RegistrationService(queue, {
     }
   )
 });
+const paymentReconciliationCron = registerPaymentReconciliationCron(registrationService);
 const notificationRepository = new NotificationRepository();
 const notificationService = new NotificationService(
   notificationRepository,
@@ -180,5 +182,9 @@ app.listen(port, () => {
   if (csvImportJobs.jobs.length === 0) {
     // eslint-disable-next-line no-console
     console.log("CSV import schedules disabled (set CSV_IMPORT_ENABLED=true to enable nightly/evening imports).");
+  }
+  if (paymentReconciliationCron.jobs.length === 0) {
+    // eslint-disable-next-line no-console
+    console.log("Payment reconciliation cron disabled (set PAYMENT_RECONCILIATION_CRON_ENABLED=true to enable).");
   }
 });
