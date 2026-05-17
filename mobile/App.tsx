@@ -36,6 +36,7 @@ import {
   validateStaffSession,
 } from "./lib/auth";
 import {
+  backfillCheckinStudentNamesFromRoster,
   findLatestCheckinByRegistrationId,
   getCachedWorkshop,
   getPendingCheckinSummary,
@@ -62,6 +63,7 @@ import {
   buildDomainErrorCard,
   buildOfflineQueuedCard,
   buildSyncSummaryCard,
+  formatCheckinStudentLabel,
   type StaffResultCard,
 } from "./lib/ui";
 
@@ -327,6 +329,7 @@ export default function App(): ReactElement {
   const refreshLogs = useCallback(async (): Promise<void> => {
     setIsLoadingLogs(true);
     try {
+      await backfillCheckinStudentNamesFromRoster();
       const [syncLog, checkinLog] = await Promise.all([
         listSyncLog(30),
         listCheckinLog(60),
@@ -505,22 +508,6 @@ export default function App(): ReactElement {
     [online, selectedWorkshopId],
   );
 
-  const chooseWorkshop = useCallback(
-    async (workshopId: string): Promise<void> => {
-      await AsyncStorage.setItem(SELECTED_WORKSHOP_KEY, workshopId);
-      setSelectedWorkshopId(workshopId);
-      setScreen("operator");
-      setResultCard({
-        tone: "info",
-        title: "Workshop ready",
-        detail: `Capture is now focused on ${getWorkshopLabel(
-          workshops.find((item) => item.workshop_id === workshopId) ?? null,
-        )}.`,
-      });
-    },
-    [workshops],
-  );
-
   const clearWorkshopSelection = useCallback(async (): Promise<void> => {
     await AsyncStorage.removeItem(SELECTED_WORKSHOP_KEY);
     setSelectedWorkshopId(null);
@@ -551,8 +538,9 @@ export default function App(): ReactElement {
     }
   }
 
-  const syncWorkshopData = useCallback(async (): Promise<void> => {
-    if (!selectedWorkshopId) {
+  const syncWorkshopData = useCallback(async (workshopIdOverride?: string): Promise<void> => {
+    const workshopId = workshopIdOverride ?? selectedWorkshopId;
+    if (!workshopId) {
       setResultCard({
         tone: "warning",
         title: "Workshop required",
@@ -580,15 +568,15 @@ export default function App(): ReactElement {
     setIsSyncingWorkshopData(true);
     try {
       await runWithFreshSession(async (accessToken) => {
-        const rosterAfterKey = `${ROSTER_SYNCED_AT_PREFIX}${selectedWorkshopId}`;
+        const rosterAfterKey = `${ROSTER_SYNCED_AT_PREFIX}${workshopId}`;
         const rosterAfter = await AsyncStorage.getItem(rosterAfterKey);
         const roster = await checkinApi.getRoster(
           accessToken,
-          selectedWorkshopId,
+          workshopId,
           rosterAfter ?? undefined,
         );
         await upsertWorkshopRosterCache(
-          selectedWorkshopId,
+          workshopId,
           roster.roster.map((entry) => ({
             registration_id: entry.registration_id,
             student_user_id: entry.student_user_id,
@@ -647,6 +635,25 @@ export default function App(): ReactElement {
       setIsSyncingWorkshopData(false);
     }
   }, [online, selectedWorkshopId, session]);
+
+  const chooseWorkshop = useCallback(
+    async (workshopId: string): Promise<void> => {
+      await AsyncStorage.setItem(SELECTED_WORKSHOP_KEY, workshopId);
+      setSelectedWorkshopId(workshopId);
+      setScreen("operator");
+      setResultCard({
+        tone: "info",
+        title: "Workshop ready",
+        detail: `Capture is now focused on ${getWorkshopLabel(
+          workshops.find((item) => item.workshop_id === workshopId) ?? null,
+        )}.`,
+      });
+      if (session && online) {
+        void syncWorkshopData(workshopId);
+      }
+    },
+    [online, session, syncWorkshopData, workshops],
+  );
 
   useEffect(() => {
     if (!session || !online || isLoadingWorkshops || workshops.length > 0) {
@@ -1106,6 +1113,9 @@ export default function App(): ReactElement {
                   <Text style={[styles.tableHeaderCell, styles.tableColResult]}>
                     Status
                   </Text>
+                  <Text style={[styles.tableHeaderCell, styles.tableColStudent]}>
+                    Student
+                  </Text>
                   <Text style={[styles.tableHeaderCell, styles.tableColTime]}>
                     Time
                   </Text>
@@ -1121,6 +1131,9 @@ export default function App(): ReactElement {
                     <View key={row.device_scan_id} style={styles.tableRow}>
                       <Text style={[styles.tableCell, styles.tableColResult]}>
                         {statusLabel}
+                      </Text>
+                      <Text style={[styles.tableCell, styles.tableColStudent]}>
+                        {formatCheckinStudentLabel(row)}
                       </Text>
                       <Text style={[styles.tableCell, styles.tableColTime]}>
                         {time}
@@ -1595,6 +1608,9 @@ const styles = StyleSheet.create({
   },
   tableColResult: {
     flex: 1,
+  },
+  tableColStudent: {
+    flex: 2,
   },
   tableColMeta: {
     flex: 2,
