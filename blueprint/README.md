@@ -1,10 +1,10 @@
-# Hướng dẫn Blueprint
+# Hướng dẫn xem được sơ đồ plantUML trong markdown preview vscode
+- Mở cài đặt của VS Code bằng tổ hợp phím Ctrl + , (Windows) hoặc Cmd + , (Mac).
 
-- [proposal.md](/c:/DiskD/HCMUS/Semester8/SoftwareDesign/Final/UniHub-Workshop/blueprint/proposal.md:1): bối cảnh, vấn đề, mục tiêu, phạm vi, rủi ro
-- [design.md](/c:/DiskD/HCMUS/Semester8/SoftwareDesign/Final/UniHub-Workshop/blueprint/design.md:1): kiến trúc, C4, database, access control, cơ chế bảo vệ
-- `specs/`: đặc tả từng tính năng theo mẫu OpenSpec
+- Tìm kiếm từ khóa: plantuml.server
 
-Lưu ý:
+- Tại ô Plantuml: Server, bạn dán địa chỉ sau vào:
 
-- Các file đặc tả chính nằm trong thư mục `blueprint/specs/` để khớp với cấu trúc được yêu cầu.
-- `INFRASTRUCTURE.md` là tài liệu bổ sung cho deployment và provider, không thay thế `design.md`.
+[https://www.plantuml.com/plantuml](https://www.plantuml.com/plantuml)
+
+- Tại ô Plantuml: Render, chuyển từ Local sang PlantUMLServer.
