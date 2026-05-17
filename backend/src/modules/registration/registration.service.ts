@@ -597,7 +597,7 @@ export class RegistrationService {
     };
   }
 
-  public async runReconciliationBatch(limit = 50): Promise<{ scanned: number; updated: number }> {
+  public async runReconciliationBatch(limit = 100): Promise<{ scanned: number; updated: number }> {
     if (!this.momoAdapter) {
       return { scanned: 0, updated: 0 };
     }
@@ -994,6 +994,10 @@ export class RegistrationService {
       payload.message,
       payload.transId ? String(payload.transId) : null
     ]);
+
+    if (row.payment_status === "completed") {
+      return null; // duplicate success/no-op
+    }
 
     if (isTerminalPaymentStatus(row.payment_status)) {
       if (row.registration_status !== "pending_payment" && mappedStatus === "completed") {
