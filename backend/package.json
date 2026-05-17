@@ -28,7 +28,8 @@
     "test:peak:scale": "tsx scripts/test_peak_controller_scale_e2e.ts",
     "test:notification:unit": "tsx --test src/modules/notification/notification.service.test.ts",
     "test:notification:integration": "tsx --test src/modules/notification/notification.router.test.ts src/modules/registration/registration.notification-enqueue.test.ts",
-    "test:notification:worker": "tsx --test src/modules/notification/notification.service.test.ts"
+    "test:notification:worker": "tsx --test src/modules/notification/notification.service.test.ts",
+    "test:admin:audit-log-paging": "tsx --test src/modules/admin/admin-audit-log-cursor.test.ts src/modules/admin/admin.service.audit-log.test.ts src/modules/admin/admin.router.audit-log.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1041.0",

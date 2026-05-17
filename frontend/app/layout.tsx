@@ -17,7 +17,6 @@ export default function RootLayout({ children }: { children: ReactNode }): React
               <Link href="/" className="brand">UniHub Workshop</Link>
               <nav className="nav-links" aria-label="Main Navigation">
                 <Link href="/">Home</Link>
-                <Link href="/admin">Admin</Link>
                 <HeaderSessionControls initialAuthenticated={initialAuthenticated} />
               </nav>
             </div>
