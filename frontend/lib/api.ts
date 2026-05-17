@@ -1,5 +1,5 @@
 import type {
-  AuditLog,
+  AuditLogListResponse,
   CreateWorkshopInput,
   DashboardStats,
   UpdateWorkshopInput,
@@ -336,7 +336,13 @@ export const adminApi = {
   getStats: (token: string): Promise<DashboardStats> => apiGet<DashboardStats>("/admin/dashboard/stats", token),
   getWorkshops: (token: string): Promise<Workshop[]> => apiGet<Workshop[]>("/admin/workshops", token),
   getWorkshop: (token: string, id: string): Promise<Workshop> => apiGet<Workshop>(`/admin/workshops/${id}`, token),
-  getAuditLogs: (token: string): Promise<AuditLog[]> => apiGet<AuditLog[]>("/admin/audit-logs", token),
+  getAuditLogs: (token: string, input?: { limit?: number; cursor?: string }): Promise<AuditLogListResponse> => {
+    const params = new URLSearchParams();
+    if (input?.limit) params.set("limit", String(input.limit));
+    if (input?.cursor) params.set("cursor", input.cursor);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return apiGet<AuditLogListResponse>(`/admin/audit-logs${suffix}`, token);
+  },
   createWorkshop: (token: string, payload: CreateWorkshopInput): Promise<Workshop> =>
     apiPost<Workshop>("/admin/workshops", token, payload),
   updateWorkshop: (token: string, id: string, payload: UpdateWorkshopInput): Promise<Workshop> =>

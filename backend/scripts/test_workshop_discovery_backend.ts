@@ -126,15 +126,26 @@ async function main(): Promise<void> {
     unavailableGateway
   );
 
-  let unavailableSeen = false;
-  try {
-    await unavailableService.listWorkshopsForThisMonth({ q: "career" }, "2026-05-15T00:00:00.000Z");
-  } catch (error: unknown) {
-    unavailableSeen = error instanceof AppError && error.code === "WORKSHOP_SEARCH_UNAVAILABLE";
-  }
-  if (!unavailableSeen) {
-    throw new Error("Expected WORKSHOP_SEARCH_UNAVAILABLE for text search when backend search is down");
-  }
+  const fallbackResult = await unavailableService.listWorkshopsForThisMonth({ q: "career" }, "2026-05-15T00:00:00.000Z");
+  deepStrictEqual(fallbackResult.workshops.map((workshop) => workshop.id), ["w1"]);
+
+  const emptyIndexGateway = new SearchGatewayStub();
+  emptyIndexGateway.hits = [];
+  const emptyIndexService = new WorkshopService(
+    { listWorkshops: async () => workshops, getWorkshopDetail: async () => workshops[0] } as never,
+    emptyIndexGateway
+  );
+  const emptyIndexResult = await emptyIndexService.listWorkshopsForThisMonth({ q: "career" }, "2026-05-15T00:00:00.000Z");
+  deepStrictEqual(emptyIndexResult.workshops.map((workshop) => workshop.id), ["w1"]);
+
+  const unconfiguredGateway = new SearchGatewayStub();
+  unconfiguredGateway.isConfigured = () => false;
+  const unconfiguredService = new WorkshopService(
+    { listWorkshops: async () => workshops, getWorkshopDetail: async () => workshops[0] } as never,
+    unconfiguredGateway
+  );
+  const unconfiguredResult = await unconfiguredService.listWorkshopsForThisMonth({ q: "design" }, "2026-05-15T00:00:00.000Z");
+  deepStrictEqual(unconfiguredResult.workshops.map((workshop) => workshop.id), ["w2"]);
 
   const rankedGateway = new SearchGatewayStub();
   rankedGateway.hits = [{ id: "w2", score: 9 }, { id: "w1", score: 8 }];

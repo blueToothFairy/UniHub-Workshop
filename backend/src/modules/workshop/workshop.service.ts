@@ -8,7 +8,9 @@ import type {
   WorkshopDiscoveryQuery,
   WorkshopDiscoveryQueryInput,
   WorkshopListItem,
-  WorkshopListResponse
+  WorkshopListResponse,
+  WorkshopSearchHit,
+  WorkshopSearchRequest
 } from "./workshop.types.js";
 
 export class WorkshopService {
@@ -46,13 +48,13 @@ export class WorkshopService {
 
     let filtered: AdminWorkshop[];
     if (query.q) {
-      const hits = await this.workshopSearchGateway.searchWorkshops({
+      const hits = await this.searchWorkshopsWithFallback({
         query: query.q,
         monthStartIso,
         monthEndIso,
         payment: query.payment === "all" ? undefined : query.payment,
         limit: 50
-      });
+      }, all, year, month, query);
       const byId = new Map(all.map((workshop) => [workshop.id, workshop]));
       filtered = hits
         .map((hit) => byId.get(hit.id))
@@ -66,6 +68,8 @@ export class WorkshopService {
         .filter((workshop) => this.matchesAvailability(workshop, query.availableOnly))
         .filter((workshop) => this.matchesPayment(workshop, query.payment));
     }
+
+    filtered.sort((left, right) => new Date(right.startsAt).getTime() - new Date(left.startsAt).getTime());
 
     const registrations = filtered.reduce((sum, w) => sum + (w.confirmedRegistrations ?? 0), 0);
     return {
@@ -126,5 +130,54 @@ export class WorkshopService {
     if (payment === "all") return true;
     if (payment === "free") return !workshop.paymentRequired;
     return workshop.paymentRequired;
+  }
+
+  private async searchWorkshopsWithFallback(
+    request: WorkshopSearchRequest,
+    workshops: AdminWorkshop[],
+    year: number,
+    month: number,
+    query: WorkshopDiscoveryQuery
+  ): Promise<WorkshopSearchHit[]> {
+    if (!this.workshopSearchGateway.isConfigured()) {
+      return this.searchWorkshopsLocally(workshops, request.query, year, month, query);
+    }
+
+    try {
+      const hits = await this.workshopSearchGateway.searchWorkshops(request);
+      if (hits.length > 0) {
+        return hits;
+      }
+      // Empty ES results usually mean the index was never backfilled or is stale.
+      return this.searchWorkshopsLocally(workshops, request.query, year, month, query);
+    } catch (error: unknown) {
+      if (error instanceof AppError && error.code === "WORKSHOP_SEARCH_UNAVAILABLE") {
+        return this.searchWorkshopsLocally(workshops, request.query, year, month, query);
+      }
+      throw error;
+    }
+  }
+
+  private searchWorkshopsLocally(
+    workshops: AdminWorkshop[],
+    searchText: string,
+    year: number,
+    month: number,
+    query: WorkshopDiscoveryQuery
+  ): WorkshopSearchHit[] {
+    const normalizedQuery = searchText.trim().toLowerCase();
+    if (!normalizedQuery) return [];
+
+    return workshops
+      .filter((workshop) => this.matchesDefaultScope(workshop, year, month))
+      .filter((workshop) => this.matchesAvailability(workshop, query.availableOnly))
+      .filter((workshop) => this.matchesPayment(workshop, query.payment))
+      .filter((workshop) => this.matchesLocalTextQuery(workshop, normalizedQuery))
+      .map((workshop) => ({ id: workshop.id, score: 1 }));
+  }
+
+  private matchesLocalTextQuery(workshop: AdminWorkshop, normalizedQuery: string): boolean {
+    const fields = [workshop.title, workshop.description, workshop.speakerName, workshop.room];
+    return fields.some((field) => (field ?? "").toLowerCase().includes(normalizedQuery));
   }
 }

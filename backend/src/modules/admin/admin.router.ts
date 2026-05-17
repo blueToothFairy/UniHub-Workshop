@@ -121,9 +121,19 @@ export function createAdminRouter(adminService: AdminService): Router {
     }
   });
 
-  router.get("/audit-logs", async (_req: Request, res: Response) => {
+  router.get("/audit-logs", async (req: Request, res: Response) => {
     try {
-      res.json({ data: await adminService.listAuditLogs() });
+      const limitRaw = req.query.limit;
+      const cursorRaw = req.query.cursor;
+      const limit = limitRaw === undefined ? undefined : Number(Array.isArray(limitRaw) ? limitRaw[0] : limitRaw);
+      const cursor = typeof cursorRaw === "string" ? cursorRaw : Array.isArray(cursorRaw) ? cursorRaw[0] : undefined;
+
+      res.json({
+        data: await adminService.listAuditLogs({
+          limit,
+          cursor
+        })
+      });
     } catch (error: unknown) {
       handleError(error, res);
     }

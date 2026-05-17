@@ -53,6 +53,20 @@ export interface AuditLog {
   createdAt: string;
 }
 
+export interface AuditLogListItem {
+  id: string;
+  actorUserId: string;
+  action: AuditLog["action"];
+  targetType: "workshop";
+  targetId: string;
+  createdAt: string;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogListItem[];
+  next_cursor: string | null;
+}
+
 export interface DashboardStats {
   totalWorkshops: number;
   totalRegistrations: number;

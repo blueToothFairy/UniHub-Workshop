@@ -2,10 +2,14 @@ import { randomUUID } from "node:crypto";
 import type { IQueue } from "../../shared/interfaces/IQueue.js";
 import type { IDatabase } from "../../shared/interfaces/IDatabase.js";
 import { AppError } from "../../shared/errors/AppError.js";
+import { decodeAuditLogCursor, encodeAuditLogCursor } from "./admin-audit-log-cursor.js";
 import type {
   AuditLog,
+  AuditLogListItem,
   CreateWorkshopInput,
   DashboardStats,
+  ListAuditLogsQuery,
+  ListAuditLogsResponse,
   OverrideSummaryInput,
   UpdateWorkshopInput,
   Workshop
@@ -46,6 +50,18 @@ interface AuditLogRow {
   after_state: Workshop | null;
   created_at: Date;
 }
+
+interface AuditLogListRow {
+  id: string;
+  actor_user_id: string;
+  action: AuditLog["action"];
+  target_type: "workshop";
+  target_id: string;
+  created_at: Date;
+}
+
+const DEFAULT_AUDIT_LOG_PAGE_SIZE = 25;
+const MAX_AUDIT_LOG_PAGE_SIZE = 100;
 
 function toWorkshop(row: WorkshopRow): Workshop {
   const confirmedCount = row.confirmed_count ?? row.confirmed_registrations ?? 0;
@@ -250,18 +266,47 @@ export class AdminService {
     };
   }
 
-  public async listAuditLogs(): Promise<AuditLog[]> {
-    const result = await this.database.query<AuditLogRow>("SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 200");
-    return result.rows.map((row: AuditLogRow) => ({
+  public async listAuditLogs(query: ListAuditLogsQuery = {}): Promise<ListAuditLogsResponse> {
+    const requestedLimit = query.limit ?? DEFAULT_AUDIT_LOG_PAGE_SIZE;
+    if (!Number.isFinite(requestedLimit) || requestedLimit < 1 || requestedLimit > MAX_AUDIT_LOG_PAGE_SIZE) {
+      throw new AppError(400, "INVALID_AUDIT_LOG_QUERY", "limit must be between 1 and 100");
+    }
+
+    const limit = Math.floor(requestedLimit);
+    const cursor = query.cursor ? decodeAuditLogCursor(query.cursor) : null;
+
+    const result = cursor
+      ? await this.database.query<AuditLogListRow>(
+          `SELECT id, actor_user_id, action, target_type, target_id, created_at
+           FROM audit_logs
+           WHERE (created_at, id) < ($1::timestamptz, $2::uuid)
+           ORDER BY created_at DESC, id DESC
+           LIMIT $3`,
+          [cursor.createdAt, cursor.id, limit]
+        )
+      : await this.database.query<AuditLogListRow>(
+          `SELECT id, actor_user_id, action, target_type, target_id, created_at
+           FROM audit_logs
+           ORDER BY created_at DESC, id DESC
+           LIMIT $1`,
+          [limit]
+        );
+
+    const items: AuditLogListItem[] = result.rows.map((row) => ({
       id: row.id,
       actorUserId: row.actor_user_id,
       action: row.action,
       targetType: row.target_type,
       targetId: row.target_id,
-      beforeState: row.before_state,
-      afterState: row.after_state,
       createdAt: row.created_at.toISOString()
     }));
+
+    const last = items.at(-1);
+    const next_cursor = items.length === limit && last
+      ? encodeAuditLogCursor(last.createdAt, last.id)
+      : null;
+
+    return { items, next_cursor };
   }
 
   private async getWorkshopOrThrow(id: string): Promise<Workshop> {
