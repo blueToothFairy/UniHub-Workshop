@@ -110,6 +110,31 @@ export function buildSyncSummaryCard(processed: number, cleared: number, retaine
   };
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function formatCheckinStudentLabel(row: {
+  student_name: string | null;
+  student_id: string | null;
+  registration_id: string | null;
+}): string {
+  if (row.student_name) {
+    return row.student_id
+      ? `${row.student_name} (${row.student_id})`
+      : row.student_name;
+  }
+
+  if (row.student_id) {
+    return row.student_id;
+  }
+
+  if (row.registration_id && !UUID_PATTERN.test(row.registration_id)) {
+    return row.registration_id;
+  }
+
+  return "Unknown student";
+}
+
 export function buildRetainedReasonLabel(result: MobileCheckinSyncResult, errorCode: string | null): string {
   if (errorCode) {
     return errorCode.replaceAll("_", " ");

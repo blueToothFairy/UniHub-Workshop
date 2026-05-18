@@ -601,11 +601,50 @@ export async function upsertWorkshopRosterCache(
         syncedAt
       );
     }
+    await backfillCheckinStudentNamesFromRoster(database);
     await database.execAsync("COMMIT");
   } catch (error) {
     await database.execAsync("ROLLBACK");
     throw error;
   }
+}
+
+export async function backfillCheckinStudentNamesFromRoster(
+  database?: SQLite.SQLiteDatabase,
+): Promise<void> {
+  const db = database ?? (await getDatabase());
+  const updatedAt = new Date().toISOString();
+  await db.runAsync(
+    `UPDATE checkins
+     SET student_name = (
+           SELECT r.student_name
+           FROM workshop_roster_cache r
+           WHERE r.workshop_id = checkins.workshop_id
+             AND r.registration_id = checkins.registration_id
+           LIMIT 1
+         ),
+         student_id = COALESCE(
+           (
+             SELECT r.student_id
+             FROM workshop_roster_cache r
+             WHERE r.workshop_id = checkins.workshop_id
+               AND r.registration_id = checkins.registration_id
+             LIMIT 1
+           ),
+           student_id
+         ),
+         updated_at = ?
+     WHERE student_name IS NULL
+       AND workshop_id IS NOT NULL
+       AND registration_id IS NOT NULL
+       AND EXISTS (
+         SELECT 1
+         FROM workshop_roster_cache r
+         WHERE r.workshop_id = checkins.workshop_id
+           AND r.registration_id = checkins.registration_id
+       )`,
+    updatedAt,
+  );
 }
 
 export async function getRosterEntry(workshopId: string, registrationId: string): Promise<CachedRosterEntry | null> {

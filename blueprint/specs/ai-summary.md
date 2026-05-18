@@ -29,7 +29,7 @@ Ban tổ chức (admin với role 'organizer') upload file PDF mô tả workshop
      │                        │                     │              │             │
      │                        │ 5. Enqueue job      │              │             │
      │                        │    ai_summary_queue │              │             │
-     │                        │─────────────────────────────────► │             │
+     │                        │─────────────────────────────────►  │             │
      │                        │                     │              │             │
      │◄── 202 Accepted        │                     │              │             │
      │    {status: "processing"}                    │              │             │
@@ -37,7 +37,7 @@ Ban tổ chức (admin với role 'organizer') upload file PDF mô tả workshop
      │                     [ASYNC - BullMQ Worker]                 │             │
      │                        │                     │              │             │
      │                        │              6. Download PDF       │             │
-     │                        │◄────────────────────│◄─────────── │             │
+     │                        │◄────────────────────│◄───────────  │             │
      │                        │                     │              │             │
      │                        │              7. Call Gemini API    │             │
      │                        │──────────────────────────────────────────────── ►│

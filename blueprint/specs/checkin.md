@@ -88,36 +88,36 @@ Response: {
 
 ```text
 [Mobile App]                    [Backend API]           [PostgreSQL]
-  │                               │                        │
+  │                                │                        │
   │ 0. Staff chọn workshop         │                        │
   │    (từ workshops_cache)        │                        │
   │    và lưu selected_workshop_id │                        │
-  │                               │                        │
+  │                                │                        │
   │ 1. Quét QR → lấy qr_token      │                        │
   │    Decode + verify JWT local   │                        │
   │    Check exp                   │                        │
   │    Check token.workshop_id ==  │                        │
   │    selected_workshop_id        │                        │
-  │                               │                        │
+  │                                │                        │
   │ 2. POST /checkin/scan          │                        │
   │    { qr_token, workshop_id }   │  workshop_id = selected│
-  │──────────────────────────────►│                        │
-  │                               │ 3. Verify JWT          │
-  │                               │    Check registration  │
-  │                               │    status = 'confirmed'│
-  │                               │    Check NOT already   │
-  │                               │    checked in          │
-  │                               │───────────────────────►│
-  │                               │    INSERT INTO checkins│
-  │                               │    ON CONFLICT handle  │
-  │                               │◄───────────────────────│
+  │──────────────────────────────► │                        │
+  │                                │ 3. Verify JWT          │
+  │                                │    Check registration  │
+  │                                │    status = 'confirmed'│
+  │                                │    Check NOT already   │
+  │                                │    checked in          │
+  │                                │───────────────────────►│
+  │                                │    INSERT INTO checkins│
+  │                                │    ON CONFLICT handle  │
+  │                                │◄───────────────────────│
   │◄── 200 { result,               │                        │
-  │         registration_id,        │                        │
-  │         workshop_id,            │                        │
-  │         student_name,           │                        │
-  │         student_id,             │                        │
-  │         checked_in_at }         │                        │
-  │                               │                        │
+  │         registration_id,       │                        │
+  │         workshop_id,           │                        │
+  │         student_name,          │                        │
+  │         student_id,            │                        │
+  │         checked_in_at }        │                        │
+  │                                │                        │
   │ 4. Hiển thị:                   │                        │
   │    ✅ Checked in               │                        │
   │    hoặc                        │                        │

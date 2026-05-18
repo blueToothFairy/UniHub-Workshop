@@ -53,8 +53,8 @@ Ban tổ chức sử dụng trang web admin để tạo workshop mới, cập nh
 
 ## Tiêu chí chấp nhận
 
-- [ ] Student gọi `GET /admin/dashboard/stats` nhận `403`.
-- [ ] Organizer tạo workshop hợp lệ thì dữ liệu được lưu và xuất hiện trên danh sách admin.
-- [ ] Workshop trùng phòng, trùng giờ bị từ chối với `409`.
-- [ ] Khi reschedule workshop đã có người đăng ký, hệ thống vẫn trả response nhanh và thông báo được xử lý bất đồng bộ.
-- [ ] Mọi thao tác create, update, cancel đều có bản ghi trong `audit_logs`.
+- [x] Student gọi `GET /admin/dashboard/stats` nhận `403`.
+- [x] Organizer tạo workshop hợp lệ thì dữ liệu được lưu và xuất hiện trên danh sách admin.
+- [x] Workshop trùng phòng, trùng giờ bị từ chối với `409`.
+- [x] Khi reschedule workshop đã có người đăng ký, hệ thống vẫn trả response nhanh và thông báo được xử lý bất đồng bộ.
+- [x] Mọi thao tác create, update, cancel đều có bản ghi trong `audit_logs`.
