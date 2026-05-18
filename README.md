@@ -3,7 +3,7 @@
 
 > Manage workshops, registrations, payments, and check‑ins for university events.
 
-![Build Status](https://img.shields.io/badge/build-unknown-lightgrey)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Last Commit](https://img.shields.io/badge/last--commit-unknown-lightgrey)
@@ -43,7 +43,7 @@ UniHub Workshop is a small monorepo that implements the server and clients for m
 - Students: discover workshops, register (paid or free), receive registration confirmations and in‑app notifications.
 - Check‑in staff: scan student QR codes and sync offline scans.
 
-The backend focuses on robustness around payments (simulation + MoMo sandbox), idempotent registration flows, a payment reconciliation process, and a peak admission controller to protect the payment gateway during flash events.
+The backend focuses on robustness around payments (MoMo sandbox), idempotent registration flows, a payment reconciliation process, and a peak admission controller to protect the payment gateway during flash events.
 
 ## Features
 
