@@ -15,8 +15,6 @@
 - **Short description:** A focused platform to create and manage university workshops — organizers publish sessions, students register and pay, staff perform check‑ins, and admins monitor events.
 - **Tech stack:** Next.js (frontend), React, Node.js + TypeScript + Express (backend), PostgreSQL (via Supabase pooler), Redis + BullMQ (optional workers), Elasticsearch (search), Cloudinary (PDF/image storage), Gemini (AI summarization), MoMo payment integration.
 - **Auth method:** JWT access + refresh tokens
-- **Deployment target:** Self-hosted backend (Docker/Railway/AWS) and Vercel/Netlify for frontend (recommended)
-- **Repository URL:** (local workspace)
 
 ![Hero screenshot](assets/screenshot-hero.png)
 ![screenshot1](assets/screenshot1.png)
