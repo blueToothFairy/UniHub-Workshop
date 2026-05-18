@@ -1,88 +1,91 @@
-# UniHub Workshop — Project Proposal
+﻿# UniHub Workshop — Project Proposal
 
 ## Vấn đề
+Quy trình quản lý workshop bằng Google Form + xử lý thủ công không còn phù hợp khi quy mô sự kiện tăng lớn và có nhiều luồng nghiệp vụ đồng thời.
 
-Trường Đại học A tổ chức "Tuần lễ kỹ năng và nghề nghiệp" với quy mô ngày càng lớn: 5 ngày, 8–12 workshop song song mỗi ngày. Quy trình hiện tại dùng Google Form + email thủ công đang bộc lộ nhiều điểm yếu nghiêm trọng:
+Các điểm nghẽn chính:
+- Không kiểm soát chỗ theo thời gian thực: khi nhiều sinh viên đăng ký cùng lúc, rất dễ vượt `capacity` hoặc phải chốt danh sách thủ công sau đó.
+- Không có cơ chế chống gửi lặp: người dùng retry/refresh có thể tạo dữ liệu trùng hoặc gây tranh chấp trạng thái.
+- Không hỗ trợ luồng thanh toán có kiểm soát: khó đảm bảo tính đúng đắn khi callback trễ, timeout, hoặc cổng thanh toán không ổn định.
+- Check-in phụ thuộc mạng tại điểm quét: nếu mất kết nối, quy trình bị gián đoạn và có nguy cơ mất dữ liệu attendance.
+- Dữ liệu sinh viên phụ thuộc hệ thống cũ không có API: chỉ nhận CSV theo lịch, gây trễ dữ liệu và tăng rủi ro file lỗi/trùng.
 
-- **Không kiểm soát được chỗ ngồi:** Google Form không có cơ chế giới hạn real-time — nhiều sinh viên có thể đăng ký cùng lúc vượt quá sức chứa phòng.
-- **Tải trọng không kiểm soát:** Khi mở đăng ký, hàng nghìn sinh viên truy cập đồng thời khiến Form bị lag hoặc ghi nhận sai dữ liệu.
-- **Xác thực thủ công:** Ban tổ chức phải đối chiếu danh sách đăng ký thủ công tại cửa phòng — mất thời gian, dễ sai sót, không có bằng chứng điện tử.
-- **Thông báo chậm trễ:** Email gửi thủ công, không có kênh thống nhất, sinh viên dễ bỏ lỡ thông tin thay đổi lịch/phòng.
-- **Không có thanh toán tích hợp:** Workshop có phí phải thu tiền mặt hoặc chuyển khoản riêng, không có đối soát tự động.
-- **Dữ liệu phân tán:** Không có dashboard tổng hợp để ban tổ chức theo dõi tình hình đăng ký theo thời gian thực.
-
-**Hậu quả cụ thể:** Mùa trước có workshop 60 chỗ nhận 200+ đăng ký do Form không giới hạn, dẫn đến tranh cãi tại cửa phòng và mất uy tín tổ chức.
-
----
+Hậu quả cụ thể nếu không thay đổi:
+- Ban tổ chức tốn nhiều công sức đối soát thủ công, khó truy vết khi có sự cố.
+- Trải nghiệm sinh viên kém trong giờ cao điểm (chờ lâu, trạng thái đăng ký không rõ ràng).
+- Nguy cơ sai lệch dữ liệu nghiệp vụ (oversell, thanh toán treo, check-in thiếu) ảnh hưởng trực tiếp đến vận hành sự kiện.
 
 ## Mục tiêu
-
-| # | Mục tiêu | Chỉ số đo lường |
-|---|----------|-----------------|
-| 1 | Hỗ trợ đăng ký đồng thời lớn | 12.000 sinh viên trong 10 phút đầu, không mất dữ liệu |
-| 2 | Đảm bảo tính nhất quán chỗ ngồi | Zero trường hợp oversell (2 người cùng nhận chỗ cuối) |
-| 3 | Check-in nhanh và tin cậy | QR scan < 2 giây, hoạt động offline |
-| 4 | Xác thực sinh viên tự động | Tích hợp CSV từ hệ thống cũ, cập nhật hàng đêm |
-| 5 | Thông báo đa kênh | App + email ngay sau đăng ký thành công |
-| 6 | Thanh toán an toàn | Không double-charge, graceful khi gateway lỗi |
-| 7 | Admin tự phục vụ | Ban tổ chức tạo/sửa/hủy workshop không cần IT |
-| 8 | AI Summary tự động | Upload PDF → tóm tắt hiển thị trong < 60 giây |
-
----
+Hệ thống UniHub Workshop hướng tới các mục tiêu vận hành sau:
+- Hỗ trợ đăng ký cao điểm với kiểm soát tải và tranh chấp chỗ ngồi an toàn (mục tiêu thiết kế: phục vụ đợt mở đăng ký quy mô lớn, tham chiếu 12.000 sinh viên trong 10 phút đầu).
+- Đảm bảo tính đúng đắn dữ liệu đăng ký/thanh toán:
+  - Không oversell chỗ ngồi (`confirmed_count <= reserved_count <= capacity`).
+  - Không tạo trừ tiền lặp cho cùng một ý định đăng ký (idempotency).
+- Hoàn tất luồng workshop có phí từ đăng ký -> thanh toán -> nhận QR check-in một cách nhất quán.
+- Cho phép check-in offline tại hiện trường và đồng bộ lại khi có mạng mà không mất bản ghi.
+- Tự động hóa nhập dữ liệu sinh viên từ CSV theo lịch, có khả năng chịu lỗi file và ghi nhận outcome rõ ràng.
+- Cung cấp công cụ quản trị cho ban tổ chức (dashboard, quản lý workshop, audit log, thông báo).
 
 ## Người dùng và nhu cầu
+### 1) Sinh viên (`student`)
+Nhu cầu:
+- Xem danh sách workshop, chi tiết workshop.
+- Đăng ký workshop miễn phí/có phí, theo dõi trạng thái thanh toán.
+- Nhận mã QR khi đăng ký thành công.
+- Nhận thông báo xác nhận và cập nhật liên quan.
 
-### Sinh viên (~12.000)
-- **Nhu cầu:** Xem lịch workshop dễ hiểu, đăng ký nhanh, nhận xác nhận ngay, check-in không rắc rối.
-- **Quan trọng nhất:** Tốc độ đăng ký khi mở slot và sự công bằng (ai đến trước được trước).
-- **Điều kiện:** Kết nối mạng không ổn định trong khuôn viên trường.
+Điều quan trọng nhất:
+- Tốc độ phản hồi trong giờ cao điểm.
+- Trạng thái đăng ký rõ ràng, không mơ hồ khi mạng/chuyển hướng thanh toán gặp sự cố.
 
-### Ban tổ chức (~10 người)
-- **Nhu cầu:** Tạo/sửa/hủy workshop, xem thống kê real-time, upload tài liệu.
-- **Quan trọng nhất:** Dashboard theo dõi tình trạng đăng ký và thao tác không cần IT support.
+### 2) Ban tổ chức (`organizer`)
+Nhu cầu:
+- Tạo/sửa/hủy workshop, theo dõi thống kê.
+- Quản lý tài liệu workshop (upload PDF), xem AI summary.
+- Theo dõi audit log và chất lượng vận hành.
 
-### Nhân sự check-in (~20–30 người)
-- **Nhu cầu:** Quét QR nhanh, biết ngay kết quả (hợp lệ/không hợp lệ/đã check-in).
-- **Quan trọng nhất:** Hoạt động ổn định ngay cả khi mạng trường chập chờn.
+Điều quan trọng nhất:
+- Tính chính xác dữ liệu nghiệp vụ và khả năng truy vết khi sự cố xảy ra.
 
----
+### 3) Nhân sự check-in (`checkin_staff`)
+Nhu cầu:
+- Quét QR nhanh tại hiện trường.
+- Vẫn check-in được khi mất mạng.
+- Đồng bộ lại an toàn khi kết nối trở lại.
+
+Điều quan trọng nhất:
+- Không mất dữ liệu attendance trong điều kiện mạng không ổn định.
 
 ## Phạm vi
-
-### Trong phạm vi
-- Web app cho sinh viên và admin (responsive, chạy trên browser)
-- Mobile app cho nhân sự check-in (React Native, iOS + Android)
-- Backend API (REST)
-- Database, message queue, cache
-- Tích hợp: email (SMTP), AI summary (Anthropic Claude API hoặc Gemini API free tier), CSV import
-- Thanh toán: tích hợp với một payment gateway Việt Nam (VNPay sandbox)
-- CI/CD đơn giản với GitHub Actions, deploy lên một VPS nhỏ
+### Trong phạm vi đồ án
+- Ứng dụng web cho sinh viên và ban tổ chức (Next.js).
+- API backend (Express + TypeScript) với các module:
+  - Auth/RBAC.
+  - Workshop read/admin.
+  - Registration + payment orchestration.
+  - Notification (in-app + email).
+  - Check-in scan/sync.
+  - CSV import theo lịch.
+- Ứng dụng mobile check-in (Expo) với hàng đợi offline SQLite.
+- Persistence đa tầng: PostgreSQL (source of truth), Redis (queue/cache/control), Elasticsearch (search).
+- Tích hợp MoMo sandbox, Resend email, Gemini summary, Cloudinary lưu trữ PDF.
 
 ### Ngoài phạm vi
-- Payment gateway thật (dùng sandbox/mock)
-- Hạ tầng production-grade (không dùng Kubernetes, không multi-region)
-- Push notification native (dùng in-app notification thay thế)
-- Hệ thống quản lý sinh viên gốc (chỉ đọc CSV export)
-- Tích hợp Telegram (thiết kế extensible nhưng chưa implement)
-
----
+- Triển khai hạ tầng production-grade đầy đủ (multi-region, autoscaling phức tạp, DR hoàn chỉnh).
+- Tích hợp hai chiều hoặc realtime với hệ thống cũ (do không có API từ phía legacy).
+- Tích hợp payment production chính thức với đối soát tài chính/hoàn tiền tự động cấp doanh nghiệp.
+- Đảm bảo SLA cấp thương mại (99.9%+, observability/incident response đầy đủ như môi trường enterprise).
 
 ## Rủi ro và ràng buộc
+### Rủi ro kỹ thuật chính
+- Tranh chấp chỗ ngồi khi nhiều yêu cầu ghi đồng thời vào cùng workshop.
+- Tải đột biến tại thời điểm mở đăng ký gây nghẽn API/DB.
+- Cổng thanh toán không ổn định (timeout, callback trễ/mất, trả kết quả mơ hồ).
+- Check-in tại khu vực mất mạng kéo dài.
+- Chất lượng dữ liệu đầu vào CSV không ổn định (thiếu file, file trùng, file lỗi định dạng).
 
-| Rủi ro | Mức độ | Giải pháp dự kiến |
-|--------|--------|-------------------|
-| Tranh chấp chỗ ngồi khi đăng ký đồng thời | Cao | Pessimistic locking + atomic decrement trên Redis |
-| Tải đột biến 12.000 sinh viên | Cao | Rate limiting (Token Bucket) + queue đăng ký |
-| Payment gateway timeout | Trung bình | Circuit Breaker + Idempotency Key |
-| Check-in offline mất dữ liệu | Trung bình | Local SQLite + background sync |
-| CSV import gây gián đoạn | Thấp | Import vào staging table, swap atomic |
-| Chi phí vượt ngân sách sinh viên | Cao | Ưu tiên free tier, self-host tối đa |
-
-### Ràng buộc chi phí (quan trọng)
-Toàn bộ hệ thống phải vận hành được với chi phí **< 200.000 VNĐ/tháng** trong môi trường học thuật:
-- VPS: Oracle Cloud Free Tier (2 core, 1GB RAM) hoặc Railway/Render free tier
-- Database: PostgreSQL self-hosted trên VPS
-- Cache: Redis self-hosted (single node, không cluster)
-- AI: Gemini API free tier (60 requests/phút) hoặc Claude API với credit sinh viên
-- Email: Resend free tier (3.000 email/tháng) hoặc Gmail SMTP
-- File storage: Cloudflare R2 free tier (10GB)
+### Ràng buộc hệ thống
+- Ràng buộc tích hợp một chiều: chỉ đọc CSV export theo lịch cố định, không gọi API legacy.
+- Ràng buộc vận hành tại sự kiện: check-in phải hoạt động ngay cả khi không có Internet.
+- Ràng buộc nhất quán dữ liệu: mọi chuyển trạng thái payment/registration cần idempotent và có khả năng tự phục hồi (reconciliation/expiry).
+- Ràng buộc triển khai học thuật: ưu tiên kiến trúc đủ chắc để demo/kịch bản tải cao, nhưng vẫn giữ độ phức tạp phù hợp phạm vi đồ án.

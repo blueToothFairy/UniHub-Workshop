@@ -708,7 +708,7 @@ Bên cạnh các cơ chế điều tiết lưu lượng và ngắt mạch chủ 
 Sau khi hệ thống giữ chỗ thành công ngoài Database và gọi sang cổng MoMo, các trường hợp như mạng Internet bị ngắt quãng khiến Webhook Callback từ MoMo gửi về UniHub bị mất. Hệ quả là đơn hàng bị treo vĩnh viễn ở trạng thái `pending_provider` hoặc `unknown`, gây ra các hành vi sai lệch không mong muốn.
 
 **Giải pháp và Nguyên lý hoạt động:**
-Nhóm áp dụng mô hình thiết kế **Đạt tính nhất quán cuối (Eventual Consistency)** bằng cách sử dụng trạng thái không cho kết quả không xác định `unknown` và một tiến trình đối soát chạy ngầm `runReconciliationBatch`.
+Nhóm áp dụng mô hình thiết kế **Đạt tính nhất quán cuối (Eventual Consistency)** bằng cách sử dụng một tiến trình đối soát chạy ngầm `runReconciliationBatch` để tìm trạng thái cuối cùng cho các đơn hàng có trạng thái `unknown` do lỗi không xác định.
 
 * **Chuyển dịch trạng thái an toàn:** Khi có sự cố kết nối mạng xảy ra lúc gọi MoMo, hệ thống chuyển bản ghi đăng ký sang trạng thái tạm thời là `unknown`.
 * **Tác vụ quét Batch chạy ngầm:** Một tác vụ định kỳ sẽ kích hoạt hàm `runReconciliationBatch(limit)`. Nó sử dụng từ khóa `SKIP LOCKED`, cho phép cron job bỏ qua các hàng đang bị khóa bởi các tiến trình khác.
@@ -814,3 +814,59 @@ deactivate S
 
 ```
 ---
+
+### 8. Các quyết định kỹ thuật quan trọng (ADR)
+
+#### ADR-001: SQL (PostgreSQL) là nguồn sự thật chính thay vì NoSQL
+
+- **Lựa chọn:** Dùng PostgreSQL làm transactional store chính cho `users`, `workshops`, `registrations`, `payments`, `checkins`, `notifications`.
+- **Tại sao:** Nghiệp vụ cần tính nhất quán mạnh (ACID), khóa bản ghi (`FOR UPDATE`), ràng buộc dữ liệu và truy vấn quan hệ để chống oversell/double-charge.
+- **Đánh đổi:** Chi phí tối ưu scale ghi cao hơn NoSQL; cần thiết kế index và transaction cẩn thận để tránh lock contention.
+
+#### ADR-002: Kết hợp Polyglot Persistence (PostgreSQL + Redis + SQLite + Elasticsearch)
+
+- **Lựa chọn:** Không gom tất cả vào một DB; dùng đúng công cụ cho từng loại workload.
+- **Tại sao:** Redis xử lý queue/throttle/circuit nhanh; SQLite giữ dữ liệu check-in offline trên thiết bị; Elasticsearch phục vụ full-text search tốt hơn SQL thuần.
+- **Đánh đổi:** Tăng độ phức tạp vận hành và đồng bộ dữ liệu giữa các kho; cần quy ước rõ “source of truth”.
+
+#### ADR-003: JWT-based Auth thay cho Session stateful
+
+- **Lựa chọn:** Access token JWT + refresh token lưu DB (`refresh_tokens`) để revoke/rotate.
+- **Tại sao:** Phù hợp API cho web + mobile, dễ scale ngang backend, giảm phụ thuộc session store tập trung.
+- **Đánh đổi:** Cần xử lý vòng đời token (expiry/refresh/revoke), bảo mật key ký và chống lộ token phía client.
+
+#### ADR-004: Event-driven bằng BullMQ/Redis thay vì đồng bộ toàn bộ side effects
+
+- **Lựa chọn:** Các tác vụ phụ (notification, AI summary, search indexing) chạy bất đồng bộ qua queue worker.
+- **Tại sao:** Giảm độ trễ API, tách tính đúng đắn giao dịch thanh toán khỏi tác vụ ngoài (email/AI), tăng khả năng retry.
+- **Đánh đổi:** Eventual consistency cho dữ liệu phụ; cần giám sát queue backlog, retry và idempotency ở consumer.
+
+#### ADR-005: Redis + BullMQ thay vì Kafka/RabbitMQ
+
+- **Lựa chọn:** Dùng BullMQ trên Redis cho queue nội bộ.
+- **Tại sao:** Đủ đáp ứng phạm vi đồ án, triển khai đơn giản, tận dụng Redis đã có cho peak control/circuit breaker.
+- **Đánh đổi:** Hạn chế hơn Kafka về throughput lớn, stream retention, replay dài hạn; hạn chế hơn RabbitMQ ở routing pattern phức tạp.
+
+#### ADR-006: Payment correctness-first với Idempotency + Pessimistic Locking + Circuit Breaker
+
+- **Lựa chọn:** `Idempotency-Key`, lock DB theo transaction, trạng thái `unknown`, reconciliation định kỳ, circuit breaker fail-fast.
+- **Tại sao:** Chống trừ tiền hai lần, chịu lỗi callback/network timeout, và bảo vệ tài nguyên hệ thống khi gateway bất ổn.
+- **Đánh đổi:** Luồng nghiệp vụ phức tạp hơn; cần cron job reconciliation/expiry và logic trạng thái kỹ lưỡng.
+
+#### ADR-007: Offline-first cho check-in mobile
+
+- **Lựa chọn:** Ghi hàng đợi check-in vào SQLite cục bộ, sync theo lô khi online, server xử lý idempotent theo `device_scan_id`.
+- **Tại sao:** Đảm bảo vận hành tại điểm check-in ngay cả khi mất mạng; không mất dữ liệu khi app/device gián đoạn.
+- **Đánh đổi:** Cần xử lý conflict/retry và đồng bộ trạng thái nhiều bước giữa local queue và server.
+
+#### ADR-008: Tích hợp một chiều với hệ thống cũ bằng CSV theo lịch (không API)
+
+- **Lựa chọn:** Batch sequential import (`nightly/evening`) với hash idempotency, validation gate, và outcome tracking (`csv_import_runs`).
+- **Tại sao:** Ràng buộc thực tế không có API từ hệ thống cũ; cần cơ chế “an toàn khi file lỗi” và không làm gián đoạn runtime.
+- **Đánh đổi:** Dữ liệu không realtime; phụ thuộc chất lượng file export và cần cơ chế giám sát import failures.
+
+#### ADR-009: Kiến trúc backend dạng Modular Monolith thay vì Microservices sớm
+
+- **Lựa chọn:** Một backend deployable, tách module theo domain (`auth`, `registration`, `payment`, `checkin`, ...).
+- **Tại sao:** Giảm overhead phân tán, phát triển nhanh hơn trong giai đoạn đầu, vẫn giữ khả năng tách dịch vụ sau này.
+- **Đánh đổi:** Ranh giới module cần thiết kế chặt chẽ để tránh coupling; scale độc lập từng domain kém linh hoạt hơn microservices.
