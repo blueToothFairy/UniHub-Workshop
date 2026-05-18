@@ -1,0 +1,1586 @@
+{
+  "runId": 1779007762783,
+  "apiBase": "http://127.0.0.1:3000",
+  "admin": {
+    "email": "dungd@example.com",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OWFjNDJjNy00MWFhLTQ1MjMtYmZlZi1jZDFhZWQ2N2ZhOGQiLCJlbWFpbCI6ImR1bmdkQGV4YW1wbGUuY29tIiwicm9sZSI6Im9yZ2FuaXplciIsInR5cGUiOiJhY2Nlc3MiLCJpYXQiOjE3NzkwMDc3NjIsImV4cCI6MTc3OTAwODY2Mn0.2rXUsZqi3LUglBONiNxuq8MBpU-LBpM3S1lVJu2NtwY"
+  },
+  "students": [
+    {
+      "label": "student01",
+      "email": "student01.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1ZmY5ZTBiYi02N2VmLTRhNDMtODFjYi1iNmQ0YTZhMGIyNmUiLCJlbWFpbCI6InN0dWRlbnQwMS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc2MywiZXhwIjoxNzc5MDA4NjYzfQ.xy05cEcrZdAmtiSYVO0zsKKDD6TjaUJjbAg1nN_Eu30"
+    },
+    {
+      "label": "student02",
+      "email": "student02.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlODk2Y2JhMi1jYTU5LTRhN2MtOGQxNC03NTM2YjEwNDliNGMiLCJlbWFpbCI6InN0dWRlbnQwMi5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc2NCwiZXhwIjoxNzc5MDA4NjY0fQ._r0-OhJaAfHa3t5GdZIKhQsoV8crO9U6cBz4N-DnHKA"
+    },
+    {
+      "label": "student03",
+      "email": "student03.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3YzNmY2E4ZS0wOGQyLTQzZGUtYjhhYy02MWRlNjc2NzU3ZGEiLCJlbWFpbCI6InN0dWRlbnQwMy5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc2NCwiZXhwIjoxNzc5MDA4NjY0fQ.981V78M6AJmdIuIJbzydj5rrAOqv1_oKvNnyYrDOSIU"
+    },
+    {
+      "label": "student04",
+      "email": "student04.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4Njc5ZWYzMS0wMjc0LTQwY2QtOTQ2ZC1kNWM5ZmY3ZDA1NzAiLCJlbWFpbCI6InN0dWRlbnQwNC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc2NSwiZXhwIjoxNzc5MDA4NjY1fQ.VCKjFtI9KzC8X9SNNsVN8Ac8m66XW3xkBkmTQhPBIQQ"
+    },
+    {
+      "label": "student05",
+      "email": "student05.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlYmY5MzU5MC1jZjI5LTQ2ZTAtYjhiMS1jNmI4NmI5ZWMyMGQiLCJlbWFpbCI6InN0dWRlbnQwNS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc2NywiZXhwIjoxNzc5MDA4NjY3fQ.6yCnQe7hOQ_Ohxrim1krgoYsXPtQ73cyHtgk-byqKis"
+    },
+    {
+      "label": "student06",
+      "email": "student06.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYmNlZTA2My1lZmM2LTQ1M2MtYjg4Yy00MWZkNDAwMjU1YjEiLCJlbWFpbCI6InN0dWRlbnQwNi5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc2OCwiZXhwIjoxNzc5MDA4NjY4fQ.lBQSOUEc_qaXIUBNoBWZ_s0QJ2jCCRhcrTavrCXFbEU"
+    },
+    {
+      "label": "student07",
+      "email": "student07.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNGM2ODI2MC1jYjBiLTRjNGItYTQ1OS0yZTA0ZjE3NzlhZWEiLCJlbWFpbCI6InN0dWRlbnQwNy5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc2OCwiZXhwIjoxNzc5MDA4NjY4fQ.RtA1nmFptfYYUtJttfUzFVAnvqlv9DsFy30hnQUU0V8"
+    },
+    {
+      "label": "student08",
+      "email": "student08.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmMDBiZTQ0ZC1iNjY5LTQ1NmEtOTk4ZC1hZmJlYmYzZjFhNmMiLCJlbWFpbCI6InN0dWRlbnQwOC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc2OSwiZXhwIjoxNzc5MDA4NjY5fQ.IbEMCw_waTVKhdTIoQuX9IhM-i8C3Fn41ZHE6G6onmg"
+    },
+    {
+      "label": "student09",
+      "email": "student09.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwNWY2MDdiMi00MmVlLTQ0NjYtOGRhYS0yYjNhNGYzOGY4ZTEiLCJlbWFpbCI6InN0dWRlbnQwOS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc2OSwiZXhwIjoxNzc5MDA4NjY5fQ.gQAr9CCV1y5hoitJV9fVnAHBuJdv16Zw9rhQw8MnVl0"
+    },
+    {
+      "label": "student10",
+      "email": "student10.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzY2YwYWEyOC1jMmQ4LTQ1ZGYtOWYxNC05Mzk1MGQzZTVmYTMiLCJlbWFpbCI6InN0dWRlbnQxMC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3MCwiZXhwIjoxNzc5MDA4NjcwfQ.9GZNYCBb0G67RzhMy1GHyk4A8ujBQoIheg34fkJDeLg"
+    },
+    {
+      "label": "student11",
+      "email": "student11.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZjY3YTgxMi04MmRmLTQ5YTgtODNiNS05OGE1YWY2ZDFmZTUiLCJlbWFpbCI6InN0dWRlbnQxMS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3MCwiZXhwIjoxNzc5MDA4NjcwfQ.On-tashK9ATiBlDu_yY3F9LKB6ImRJ6ykU4JUkIjmPM"
+    },
+    {
+      "label": "student12",
+      "email": "student12.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmZTdkMWRiZC1iODUwLTQxM2ItOTViZS04OWJhYmExZjcwZDQiLCJlbWFpbCI6InN0dWRlbnQxMi5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3MSwiZXhwIjoxNzc5MDA4NjcxfQ.i56K7tHqJG6Tn574Tu3D3vwkv3dnOs7q_6Ze2t0yM9g"
+    },
+    {
+      "label": "student13",
+      "email": "student13.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwOTViOTkwMi1iN2MxLTQzZmEtYmYxYS05MjE4NDNmYzU1YjQiLCJlbWFpbCI6InN0dWRlbnQxMy5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3MSwiZXhwIjoxNzc5MDA4NjcxfQ.O0Qkd1zM4ML5DZrSCPPefMbIygctj26oHA_ilE7v258"
+    },
+    {
+      "label": "student14",
+      "email": "student14.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNGUyODUyMC02NGVkLTRkMTYtYTgwZC04NGMwNGFkMzE3ODciLCJlbWFpbCI6InN0dWRlbnQxNC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3MiwiZXhwIjoxNzc5MDA4NjcyfQ.v3Nh7SGDmRmJ8Dcd8hDTKihVMyvBE0wvBF8A23wdy64"
+    },
+    {
+      "label": "student15",
+      "email": "student15.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3NGUxYzliYS0wNjg4LTRiYmMtODllYS1iNWNmMjIzNGEzMmEiLCJlbWFpbCI6InN0dWRlbnQxNS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3MiwiZXhwIjoxNzc5MDA4NjcyfQ.kT-fnXlutv1uBa7LsPxj8b0TVgzpznCvPdGpbAda1dg"
+    },
+    {
+      "label": "student16",
+      "email": "student16.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzY2Q1MTAzNS05MDhlLTQ0MDUtOWQyYS0wMmRkNGFjMDkwZjQiLCJlbWFpbCI6InN0dWRlbnQxNi5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3MywiZXhwIjoxNzc5MDA4NjczfQ.7K0giNf5FAas_Y60wMGObD-YQt9AuS4XlxkoeZMRedk"
+    },
+    {
+      "label": "student17",
+      "email": "student17.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZDA4MmI2OS0yYmE3LTRmM2YtOTNlNC0yODc1YWY2Yzk5Y2MiLCJlbWFpbCI6InN0dWRlbnQxNy5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3MywiZXhwIjoxNzc5MDA4NjczfQ.GPZWjrsGMWKldA1oZ-CjhTAlyJjgp4RYb7wIg1BHjU8"
+    },
+    {
+      "label": "student18",
+      "email": "student18.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmZjg2Y2EyMy0wN2NmLTRmMTQtYTgyNy05Nzc1MDNkMGJjYmYiLCJlbWFpbCI6InN0dWRlbnQxOC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3NCwiZXhwIjoxNzc5MDA4Njc0fQ.zcWFk4TMfWRfpe3kxXT9JIv-_5RXQbxn9T9FpS8N4l0"
+    },
+    {
+      "label": "student19",
+      "email": "student19.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkOTVmM2ZmYi0zM2M4LTQ1YzktOGYwYy0zMjMxODBkZTc0ODAiLCJlbWFpbCI6InN0dWRlbnQxOS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3NCwiZXhwIjoxNzc5MDA4Njc0fQ.LbRQGJ1v9bwbxdSdY2537giUGjh409HiyTPfSckenZU"
+    },
+    {
+      "label": "student20",
+      "email": "student20.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZjRhZmM2Ni1jZmU1LTQwMjgtODdkZC1kNTE0ZWI0ODNiMTEiLCJlbWFpbCI6InN0dWRlbnQyMC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3NSwiZXhwIjoxNzc5MDA4Njc1fQ._N2HBu4D8CGKCRIvXfpF81FprVK5_vDgexau6ID3SZA"
+    },
+    {
+      "label": "student21",
+      "email": "student21.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlNzY5OTdmYi0wYmM3LTQ1OGQtODA3NC05OTMwYjc2N2M4MzQiLCJlbWFpbCI6InN0dWRlbnQyMS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3NSwiZXhwIjoxNzc5MDA4Njc1fQ.U_sLQ8yBd4Yc2u2Wfh3BClkEqA3MNFKdSxoNtFAxUFw"
+    },
+    {
+      "label": "student22",
+      "email": "student22.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyNDI3ZWFlMS1mOGE3LTQ2Y2ItOTBmNy04OTU4NTdlOGE3MTEiLCJlbWFpbCI6InN0dWRlbnQyMi5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3NiwiZXhwIjoxNzc5MDA4Njc2fQ.BTTdYYrfAsf6MMlgHiBBW-ebbznAtxLltyzj1qEEl4E"
+    },
+    {
+      "label": "student23",
+      "email": "student23.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1Yzg3YWZmYi03Y2E2LTQ1MjMtYmUwOC03OWVmMTA4YTc1ZDkiLCJlbWFpbCI6InN0dWRlbnQyMy5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3NiwiZXhwIjoxNzc5MDA4Njc2fQ.tqFTA4yb5hgn9uxPMoNQgJfc3SHZcE8K2sHpBMLUYdk"
+    },
+    {
+      "label": "student24",
+      "email": "student24.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlZWZiZmFmZS00ZGM1LTQ0MjEtYWE2OS00MzZmNWYzYjJlNjQiLCJlbWFpbCI6InN0dWRlbnQyNC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3NywiZXhwIjoxNzc5MDA4Njc3fQ.fAY5lMXLn1O7ykH3qJ0aN1kKPTTEnK_sXXSwL0tLye4"
+    },
+    {
+      "label": "student25",
+      "email": "student25.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiY2QyYjY1ZS05NGIxLTRkMmMtYjViYy05NjYxMDI5YjI0NDEiLCJlbWFpbCI6InN0dWRlbnQyNS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3NywiZXhwIjoxNzc5MDA4Njc3fQ.Xlf9qzyNyxqFVx3wcR6W1l4P_E7Swo6FDkgCi24omZ4"
+    },
+    {
+      "label": "student26",
+      "email": "student26.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YjllNjUyMC03NGQxLTQ3OTAtOWIyYy0zNDQwZmI0MTc5ZGEiLCJlbWFpbCI6InN0dWRlbnQyNi5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3OCwiZXhwIjoxNzc5MDA4Njc4fQ.RrfNWLkoTJfOiqo3PdIJptZBeFDytV4BSU_HD7Ce5uw"
+    },
+    {
+      "label": "student27",
+      "email": "student27.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhMDQ0Mzk4YS0yZjc4LTQyY2QtYWUxMi1iY2EyYTc2MGU4MzciLCJlbWFpbCI6InN0dWRlbnQyNy5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3OCwiZXhwIjoxNzc5MDA4Njc4fQ.pafoPfVM0OzMAMFqGafe8TxyhyxfetLK5Tzx-xfVxnU"
+    },
+    {
+      "label": "student28",
+      "email": "student28.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiYmNlZWIzZC02M2NjLTRlOWYtODIwNy04ZmVmMzUyNGMzOTMiLCJlbWFpbCI6InN0dWRlbnQyOC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3OSwiZXhwIjoxNzc5MDA4Njc5fQ.KB-Gqr1AbrsMnUW9X2LckXJob8qWepJaUB0mrfI423I"
+    },
+    {
+      "label": "student29",
+      "email": "student29.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmZjE5YjM5Yy1jMTY4LTRjOTktODE0Ny1kYzdjODA2OGFhNzciLCJlbWFpbCI6InN0dWRlbnQyOS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc3OSwiZXhwIjoxNzc5MDA4Njc5fQ.JzXv-NUHDOqOzrE3Ca6xSyFP_89S__jNOYlB6-uzU4k"
+    },
+    {
+      "label": "student30",
+      "email": "student30.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1YjQ5NTU5NS03NzBkLTRmYTQtODMxNC1mMWNlZTJiNGIzZGIiLCJlbWFpbCI6InN0dWRlbnQzMC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4MCwiZXhwIjoxNzc5MDA4NjgwfQ.eJlQQ0bAcjuAEY4e6fQBeV778D6aD94CVQk95MA311U"
+    },
+    {
+      "label": "student31",
+      "email": "student31.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMDgyMjkwNy1jMjhjLTQ5NjgtYTZmZi1kMTYyZGY2NDQwMmIiLCJlbWFpbCI6InN0dWRlbnQzMS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4MCwiZXhwIjoxNzc5MDA4NjgwfQ.zSI7xJ3WymkViSryUNFut8sDB9lwvAU1Dpz7Cx5qq9E"
+    },
+    {
+      "label": "student32",
+      "email": "student32.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4YTZmN2U0Mi02MjUxLTRkMDAtYjhhNS04ODdjOWNiYzA5MGYiLCJlbWFpbCI6InN0dWRlbnQzMi5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4MCwiZXhwIjoxNzc5MDA4NjgwfQ.S676hsqcriinACzYQZRauWbfsIpVBlhgE28P9mIaHI4"
+    },
+    {
+      "label": "student33",
+      "email": "student33.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzOTlkMGM4MS1mNTE5LTQ0MmMtOTk5My0wMDQ3MWFlY2I0MjkiLCJlbWFpbCI6InN0dWRlbnQzMy5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4MSwiZXhwIjoxNzc5MDA4NjgxfQ.9-MkdUvcD9Ply_iiqnKCfi_Cs0Ekr2xWRGNMTni48uk"
+    },
+    {
+      "label": "student34",
+      "email": "student34.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxYTJkM2I1ZS0xOGQxLTQyYTktYjA2ZC02NDUyMmQyMGM1NDUiLCJlbWFpbCI6InN0dWRlbnQzNC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4MSwiZXhwIjoxNzc5MDA4NjgxfQ.1ltBq8eypzlpsMfoCq53kQaP-uZ1GUlV1mqvZqooU94"
+    },
+    {
+      "label": "student35",
+      "email": "student35.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNmQwZjY5Mi03ZTc5LTQ4NWYtYTk1Ny0yYjFlNzk2MjYyMGEiLCJlbWFpbCI6InN0dWRlbnQzNS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4MiwiZXhwIjoxNzc5MDA4NjgyfQ.cPh6VdWxD13n5heSvlz94tKQ43hkgGwLhp1jo-wGqIU"
+    },
+    {
+      "label": "student36",
+      "email": "student36.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1YjEwNmZlOC1lMGUxLTQ3MDgtYTk1Ny04NWE0MmE3YThjZTgiLCJlbWFpbCI6InN0dWRlbnQzNi5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4MiwiZXhwIjoxNzc5MDA4NjgyfQ.Fhq8Yaneoy0JswTaOK4VTJqK_hxyJVPskVqOqmlBgOU"
+    },
+    {
+      "label": "student37",
+      "email": "student37.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0Y2EyNmJkYS05YmUwLTQ5YmQtOGUzNC04NjU1ZjRiOTQ5OGEiLCJlbWFpbCI6InN0dWRlbnQzNy5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4MywiZXhwIjoxNzc5MDA4NjgzfQ.4_Agk3V7OmMA0855itpvLRKb1OCSeItRPGmUsBebA50"
+    },
+    {
+      "label": "student38",
+      "email": "student38.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNTczYTNmNy1jYmZmLTQ4Y2YtOTc2NS0zY2I0MjMzMzdiYmYiLCJlbWFpbCI6InN0dWRlbnQzOC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4MywiZXhwIjoxNzc5MDA4NjgzfQ.ZoYzUHrvbcRW3etq8Sm21lxlRsBR0Yg6JB6aitMATck"
+    },
+    {
+      "label": "student39",
+      "email": "student39.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwNWY3ZmY2OS05NzZhLTQ4YWUtYWVlNS0xMWI0N2M1YzE5ZjMiLCJlbWFpbCI6InN0dWRlbnQzOS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4NCwiZXhwIjoxNzc5MDA4Njg0fQ.-Goph0qyeymG7c0JJlKguqHewMxAr5oseEr32QfipT0"
+    },
+    {
+      "label": "student40",
+      "email": "student40.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzODdiNzZjYy01NzQwLTQxNGYtOGU1Zi0xYzIyZmU3MWRlZWYiLCJlbWFpbCI6InN0dWRlbnQ0MC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4NCwiZXhwIjoxNzc5MDA4Njg0fQ.YowiFFNexOyvlF9BuiE8ZwjohoJCDHkUI4DFtLq_lSs"
+    },
+    {
+      "label": "student41",
+      "email": "student41.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyODI3YjRlZS0wM2Q1LTRiOWMtODAzOC01NDU2ZmI2NWUzZTUiLCJlbWFpbCI6InN0dWRlbnQ0MS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4NSwiZXhwIjoxNzc5MDA4Njg1fQ.MaMqZlafsttTYRQ-zhyHoGEW9je0GI19hNdBTdXF1OY"
+    },
+    {
+      "label": "student42",
+      "email": "student42.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlY2IxZDljNi1lY2ViLTQxZGQtODJlNy1lODQxYTU3ZWZjNTUiLCJlbWFpbCI6InN0dWRlbnQ0Mi5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4NSwiZXhwIjoxNzc5MDA4Njg1fQ.6IT7FFm6oFsf3jSWwQzcqybFondO6m-KeEV_bzFPAA4"
+    },
+    {
+      "label": "student43",
+      "email": "student43.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2N2Y2ZGQ0Yy1jYzllLTQyMjctYjVmOS05MTg0NjM0Y2RiNGEiLCJlbWFpbCI6InN0dWRlbnQ0My5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4NiwiZXhwIjoxNzc5MDA4Njg2fQ.M72TB67l9Pugf-lgnsko4cyllPtmw5qSoVS-I6s1eT4"
+    },
+    {
+      "label": "student44",
+      "email": "student44.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1MzRhNzE5My1mYTFkLTQ0YmItOWFmNi0xZWNmYTg5MjUyMzMiLCJlbWFpbCI6InN0dWRlbnQ0NC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4NiwiZXhwIjoxNzc5MDA4Njg2fQ.uWYW-rMXFw3vWcbOPGsPLu8QuSFn8TU-Cj3Wb8iOx0I"
+    },
+    {
+      "label": "student45",
+      "email": "student45.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MzcwNDQyNy1iNTc1LTQzNWItODYzMS0wZTk4NjE2ZDA1ZjMiLCJlbWFpbCI6InN0dWRlbnQ0NS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4NywiZXhwIjoxNzc5MDA4Njg3fQ.H79GOZk7B6Y9vKS3bCyEq_a8etCxC77Svh3QPQrS6MI"
+    },
+    {
+      "label": "student46",
+      "email": "student46.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwM2NiMDZhZi1jOTMyLTRlN2YtYmI4Yy0zYzkyYzljNDEyYmYiLCJlbWFpbCI6InN0dWRlbnQ0Ni5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4NywiZXhwIjoxNzc5MDA4Njg3fQ.qf9Gxf_zOvO19aPF0Lr_9faFmIxkHwzEXcP4lCX1LN8"
+    },
+    {
+      "label": "student47",
+      "email": "student47.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNGQ3ZjY0Mi1hZDY3LTQ4YmItYTIzYi1kZDM3YTg2YzA2ODUiLCJlbWFpbCI6InN0dWRlbnQ0Ny5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4OCwiZXhwIjoxNzc5MDA4Njg4fQ.LfOfywXLx8EOVogWbldWqfQlh8f0Jq-rdHsahVdzK18"
+    },
+    {
+      "label": "student48",
+      "email": "student48.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwNTNmYTRjOS0zN2M3LTRkN2EtYTIwYS05ZjgzMDY4ZTdjMjQiLCJlbWFpbCI6InN0dWRlbnQ0OC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4OCwiZXhwIjoxNzc5MDA4Njg4fQ.VM-DUJrI8Jm0nyR0Gt0X0Cy9to7CdnmLNQDa2IIBNQU"
+    },
+    {
+      "label": "student49",
+      "email": "student49.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYzU0N2E0MC00Y2VjLTQyNTEtYjJiNS0zYzE2NjliNGYxNzUiLCJlbWFpbCI6InN0dWRlbnQ0OS5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4OSwiZXhwIjoxNzc5MDA4Njg5fQ.Qoj7xBQeYBwLKnLNOHPHXOdSeu6_pqwYHWCWhamtNKQ"
+    },
+    {
+      "label": "student50",
+      "email": "student50.peak.real.1779007762783@example.com",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyN2EzYTVjMy03OGE0LTQ3MmUtOGE4My00N2VmMjlmNWQzODQiLCJlbWFpbCI6InN0dWRlbnQ1MC5wZWFrLnJlYWwuMTc3OTAwNzc2Mjc4M0BleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTAwNzc4OSwiZXhwIjoxNzc5MDA4Njg5fQ.9GTEJ121681XugkvlEfPds9cHqWJRfTCHhB4yzVLRUo"
+    }
+  ],
+  "workshops": {
+    "peakWorkshopId": "fd34f45d-9b82-47a2-aabd-18a9d1823437",
+    "idempotencyWorkshopId": "51497fac-9b23-46c0-b86d-fdca016ce58b",
+    "oversellWorkshopId": "3e05f113-ba64-4a9e-8a20-a1cfa4462358",
+    "freeWorkshopId": "424d0db8-abbf-445a-974d-a4f8833e0312",
+    "idempotencyAltWorkshopId": "5cf80eb2-50e8-4325-8de9-86b7fe92708c"
+  },
+  "admission": {
+    "tokensByWorkshop": {
+      "fd34f45d-9b82-47a2-aabd-18a9d1823437": {
+        "student01": "17e7560f-4f88-4abe-b0a7-d881486243c4",
+        "student02": "dc4f2bc2-5936-4373-8313-d220eba397a3",
+        "student03": "b688e508-c001-430a-9f46-c154e8163ba1",
+        "student04": "55ce4b63-0100-4c1a-9bb5-096230dd02cb",
+        "student05": "35eb8505-48c3-4f6f-a3d9-365116e7a6b8",
+        "student06": "7a9774db-dac1-4855-b8f9-35ddcf848ac4",
+        "student07": "c41dc590-d8e1-46d3-acd0-1e82fd9e54e9",
+        "student08": "6a598138-076a-4c26-b8e5-9792fd0ba244",
+        "student09": "50fbf455-f627-448d-9279-81cc45a34d8c",
+        "student10": "31566fd0-d06a-4821-ba93-26b8fcdb0b24",
+        "student11": "379cb6c0-42ca-4c2a-8909-d775ef114abe",
+        "student12": "bd828764-83de-4c54-90bf-20bb8a250658",
+        "student13": "42b203f5-4e3a-48f2-863a-abda948784b0",
+        "student14": "e70394b6-ca90-491c-a1eb-3a32a68c0160",
+        "student15": "a8cfeb01-f9bb-4e3d-8f8a-1a96bb0a4d76",
+        "student16": "3050ed6b-80b4-4837-ad44-1bdf974eda8b",
+        "student17": "1cd6d882-ef99-4cc4-87ba-8d012eadb1ca",
+        "student18": "9688f19a-0564-4b1b-90dc-59c85d1801a5",
+        "student19": "7c5fc788-5a22-4507-bc53-05a9ba5ca555",
+        "student20": "cfabeb62-5168-443a-b3b0-411fe997a731",
+        "student21": "046a8bcb-975f-44ad-af14-44a5d97e7bd1",
+        "student22": "3efca229-2c9a-4e2b-8b9f-cdfacbb529c8",
+        "student23": "ef2f82a1-a53c-4379-b009-9e0448a10352",
+        "student24": "578925fd-c443-4401-8363-77ef560d97e5",
+        "student25": "092f8cca-f3b9-4bbe-a4cd-6bbd465764bd",
+        "student26": "c52b0cf7-40fb-4cbf-aba4-3a75edaed2f0",
+        "student28": "e5de9177-bfad-4562-9516-9b6cba2cca81"
+      },
+      "51497fac-9b23-46c0-b86d-fdca016ce58b": {
+        "student01": "569ef280-cf88-4734-bf62-81f7f25ba2c5"
+      },
+      "5cf80eb2-50e8-4325-8de9-86b7fe92708c": {
+        "student01": "cdde527b-c8f5-4801-a6fb-24034a2d951a"
+      }
+    }
+  },
+  "notes": {
+    "peakGateInitialStatus": "open"
+  },
+  "part1": {
+    "admissionResults": [
+      {
+        "student": "student01",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "17e7560f-4f88-4abe-b0a7-d881486243c4"
+      },
+      {
+        "student": "student02",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "dc4f2bc2-5936-4373-8313-d220eba397a3"
+      },
+      {
+        "student": "student03",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "b688e508-c001-430a-9f46-c154e8163ba1"
+      },
+      {
+        "student": "student04",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "55ce4b63-0100-4c1a-9bb5-096230dd02cb"
+      },
+      {
+        "student": "student05",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "35eb8505-48c3-4f6f-a3d9-365116e7a6b8"
+      },
+      {
+        "student": "student06",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "7a9774db-dac1-4855-b8f9-35ddcf848ac4"
+      },
+      {
+        "student": "student07",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "c41dc590-d8e1-46d3-acd0-1e82fd9e54e9"
+      },
+      {
+        "student": "student08",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "6a598138-076a-4c26-b8e5-9792fd0ba244"
+      },
+      {
+        "student": "student09",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "50fbf455-f627-448d-9279-81cc45a34d8c"
+      },
+      {
+        "student": "student10",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "31566fd0-d06a-4821-ba93-26b8fcdb0b24"
+      },
+      {
+        "student": "student11",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "379cb6c0-42ca-4c2a-8909-d775ef114abe"
+      },
+      {
+        "student": "student12",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "bd828764-83de-4c54-90bf-20bb8a250658"
+      },
+      {
+        "student": "student13",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "42b203f5-4e3a-48f2-863a-abda948784b0"
+      },
+      {
+        "student": "student14",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "e70394b6-ca90-491c-a1eb-3a32a68c0160"
+      },
+      {
+        "student": "student15",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "a8cfeb01-f9bb-4e3d-8f8a-1a96bb0a4d76"
+      },
+      {
+        "student": "student16",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "3050ed6b-80b4-4837-ad44-1bdf974eda8b"
+      },
+      {
+        "student": "student17",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "1cd6d882-ef99-4cc4-87ba-8d012eadb1ca"
+      },
+      {
+        "student": "student18",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "9688f19a-0564-4b1b-90dc-59c85d1801a5"
+      },
+      {
+        "student": "student19",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "7c5fc788-5a22-4507-bc53-05a9ba5ca555"
+      },
+      {
+        "student": "student20",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "cfabeb62-5168-443a-b3b0-411fe997a731"
+      },
+      {
+        "student": "student21",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "046a8bcb-975f-44ad-af14-44a5d97e7bd1"
+      },
+      {
+        "student": "student22",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "3efca229-2c9a-4e2b-8b9f-cdfacbb529c8"
+      },
+      {
+        "student": "student23",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "ef2f82a1-a53c-4379-b009-9e0448a10352"
+      },
+      {
+        "student": "student24",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "578925fd-c443-4401-8363-77ef560d97e5"
+      },
+      {
+        "student": "student25",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "092f8cca-f3b9-4bbe-a4cd-6bbd465764bd"
+      },
+      {
+        "student": "student26",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "c52b0cf7-40fb-4cbf-aba4-3a75edaed2f0"
+      },
+      {
+        "student": "student27",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 24,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student28",
+        "statusCode": 200,
+        "gateStatus": "admitted",
+        "queuePosition": null,
+        "retryAfter": null,
+        "admissionToken": "e5de9177-bfad-4562-9516-9b6cba2cca81"
+      },
+      {
+        "student": "student29",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 25,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student30",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 29,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student31",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 23,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student32",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 30,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student33",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 26,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student34",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 25,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student35",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 31,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student36",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 28,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student37",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 27,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student38",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 24,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student39",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 32,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student40",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 32,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student41",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 31,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student42",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 38,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student43",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 34,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student44",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 33,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student45",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 35,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student46",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 29,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student47",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 36,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student48",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 30,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student49",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 37,
+        "retryAfter": 5,
+        "admissionToken": null
+      },
+      {
+        "student": "student50",
+        "statusCode": 200,
+        "gateStatus": "waiting",
+        "queuePosition": 30,
+        "retryAfter": 5,
+        "admissionToken": null
+      }
+    ],
+    "counters": {
+      "admitted": 27,
+      "waiting": 23,
+      "full": 0,
+      "rateLimited": 0,
+      "other": 0
+    },
+    "student03Spam": {
+      "status": 429,
+      "body": {
+        "error": {
+          "code": "RATE_LIMITED",
+          "message": "Admission polling is too frequent"
+        },
+        "retry_after": 3
+      }
+    }
+  },
+  "part2": {
+    "idempotencyKey": "demo-key-student01-1779007762783",
+    "firstResponse": {
+      "data": {
+        "registration_id": "14506fa9-36ba-49d0-8cb4-06e9f759a316",
+        "registration_status": "pending_payment",
+        "payment_required": true,
+        "payment_id": "32a03363-fc5d-4467-b920-dd37a5251ccf",
+        "payment_status": "pending_provider",
+        "payment_url": "https://test-payment.momo.vn/v2/gateway/pay?t=TU9NT3xtb21vLTE0NTA2ZmE5LTM2YmEtNDlkMC04Y2I0LTA2ZTlmNzU5YTMxNg&s=ff9cb176ca844674560c2608f399b269dfb640e293574ac1bf4ea31eff99b21c",
+        "next_action": "redirect_to_payment"
+      }
+    },
+    "retryResponse": {
+      "data": {
+        "registration_id": "14506fa9-36ba-49d0-8cb4-06e9f759a316",
+        "registration_status": "pending_payment",
+        "payment_required": true,
+        "payment_id": "32a03363-fc5d-4467-b920-dd37a5251ccf",
+        "payment_status": "pending_provider",
+        "payment_url": "https://test-payment.momo.vn/v2/gateway/pay?t=TU9NT3xtb21vLTE0NTA2ZmE5LTM2YmEtNDlkMC04Y2I0LTA2ZTlmNzU5YTMxNg&s=ff9cb176ca844674560c2608f399b269dfb640e293574ac1bf4ea31eff99b21c",
+        "next_action": "redirect_to_payment"
+      }
+    },
+    "conflictResponse": {
+      "error": {
+        "code": "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST",
+        "message": "Idempotency-Key reused for a different request"
+      }
+    },
+    "replaySameRegistration": true,
+    "replaySamePayment": true,
+    "paymentCountForKey": 1,
+    "counters": {
+      "before": {
+        "id": "51497fac-9b23-46c0-b86d-fdca016ce58b",
+        "capacity": 3,
+        "reserved_count": 0,
+        "confirmed_count": 0
+      },
+      "afterFirst": {
+        "id": "51497fac-9b23-46c0-b86d-fdca016ce58b",
+        "capacity": 3,
+        "reserved_count": 1,
+        "confirmed_count": 0
+      },
+      "afterRetry": {
+        "id": "51497fac-9b23-46c0-b86d-fdca016ce58b",
+        "capacity": 3,
+        "reserved_count": 1,
+        "confirmed_count": 0
+      }
+    }
+  },
+  "part3": {
+    "admission": [
+      {
+        "student": "student02",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "a84945a0-e982-4e4f-b7d3-25e4fb0a7ffa",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student03",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "450de7f1-0fc6-4aeb-9cae-2f12ca7cbeed",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student04",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "00a4df2f-61b1-400f-9ac4-c54234de5639",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student05",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "861f8b5a-4b2a-482c-9be3-fab794fdc032",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student06",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "5174237f-b34e-4344-bba4-83539b151bd3",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student07",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "58fb9133-d25c-4c28-89d3-39c465b7d0f4",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student08",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "7186d4fc-2598-4b77-9d1a-91871931e979",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student09",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "97572dd2-965e-466c-a2a6-f1b8517c4869",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student10",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "b8e1504a-5856-4a80-a589-5c74429b9c6c",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student11",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "337ef4db-d028-4452-aa37-147563ccfbc7",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student12",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "513ab7e6-15c9-4068-8d85-049d14413145",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student13",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "64191764-1ae0-4c11-be03-81537ddcfef5",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student14",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "9be1ea3d-4ec0-42c2-ab11-4f2b2f333c70",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student15",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "fb7699d9-8a09-4e68-a98c-29bd48c94dd8",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student16",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "3613e5f4-c186-49f6-bc4d-184fd361e6a8",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student17",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "f6eea935-23a5-4222-989e-2191d8c3080e",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student18",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "2447d367-bd2d-4cc4-b12b-33d184047716",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student19",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "479e1eb5-4990-4c33-863f-ab6d240d6985",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student20",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "794311d2-11c0-4412-aefa-0a1ee671fca7",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student21",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "dd83a3c1-659b-4150-9b99-d16e6f6b1ed4",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student22",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "533ba854-e2d1-4953-8c8e-4bf416c5ff3f",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student23",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 24
+      },
+      {
+        "student": "student24",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 29
+      },
+      {
+        "student": "student25",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 28
+      },
+      {
+        "student": "student26",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 25
+      },
+      {
+        "student": "student27",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 26
+      },
+      {
+        "student": "student28",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 27
+      },
+      {
+        "student": "student29",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 30
+      },
+      {
+        "student": "student30",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "dc445ac0-2e8c-4828-9f34-a5a2e3c1be6e",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student31",
+        "status": 200,
+        "gateStatus": "admitted",
+        "token": "1f00fc54-0b78-411b-a6aa-7a458a10efcb",
+        "retryAfter": null,
+        "queuePosition": null
+      },
+      {
+        "student": "student32",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 31
+      },
+      {
+        "student": "student33",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 30
+      },
+      {
+        "student": "student34",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 36
+      },
+      {
+        "student": "student35",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 46
+      },
+      {
+        "student": "student36",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 42
+      },
+      {
+        "student": "student37",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 40
+      },
+      {
+        "student": "student38",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 35
+      },
+      {
+        "student": "student39",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 34
+      },
+      {
+        "student": "student40",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 39
+      },
+      {
+        "student": "student41",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 38
+      },
+      {
+        "student": "student42",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 48
+      },
+      {
+        "student": "student43",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 43
+      },
+      {
+        "student": "student44",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 41
+      },
+      {
+        "student": "student45",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 44
+      },
+      {
+        "student": "student46",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 32
+      },
+      {
+        "student": "student47",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 45
+      },
+      {
+        "student": "student48",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 33
+      },
+      {
+        "student": "student49",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 47
+      },
+      {
+        "student": "student50",
+        "status": 200,
+        "gateStatus": "waiting",
+        "token": null,
+        "retryAfter": 5,
+        "queuePosition": 37
+      }
+    ],
+    "registrationResults": [
+      {
+        "student": "student02",
+        "idempotencyKey": "demo-oversell-1779007804095-0-student02",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student03",
+        "idempotencyKey": "demo-oversell-1779007804096-1-student03",
+        "status": 201,
+        "body": {
+          "data": {
+            "registration_id": "9d19021e-26ed-4a15-979c-3afbe9569ec6",
+            "registration_status": "pending_payment",
+            "payment_required": true,
+            "payment_id": "98098910-8bcb-492c-bdff-18ff160bed27",
+            "payment_status": "pending_provider",
+            "payment_url": "https://test-payment.momo.vn/v2/gateway/pay?t=TU9NT3xtb21vLTlkMTkwMjFlLTI2ZWQtNGExNS05NzljLTNhZmJlOTU2OWVjNg&s=164af982abd3d5cab8a07bbcc63388eb8efb9b9f42a96d9c15e1b0273fd992de",
+            "next_action": "redirect_to_payment"
+          }
+        }
+      },
+      {
+        "student": "student04",
+        "idempotencyKey": "demo-oversell-1779007804096-2-student04",
+        "status": 201,
+        "body": {
+          "data": {
+            "registration_id": "94d29119-c138-4f9d-958e-9554ec717965",
+            "registration_status": "pending_payment",
+            "payment_required": true,
+            "payment_id": "d5471e7e-478f-41bf-ac72-08ef1e141a95",
+            "payment_status": "pending_provider",
+            "payment_url": "https://test-payment.momo.vn/v2/gateway/pay?t=TU9NT3xtb21vLTk0ZDI5MTE5LWMxMzgtNGY5ZC05NThlLTk1NTRlYzcxNzk2NQ&s=8f2f41cbd9ba09d28c95dc9afbd2c980a43a768519a68d62eba93a963f5598c5",
+            "next_action": "redirect_to_payment"
+          }
+        }
+      },
+      {
+        "student": "student05",
+        "idempotencyKey": "demo-oversell-1779007804097-3-student05",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student06",
+        "idempotencyKey": "demo-oversell-1779007804099-4-student06",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student07",
+        "idempotencyKey": "demo-oversell-1779007804100-5-student07",
+        "status": 201,
+        "body": {
+          "data": {
+            "registration_id": "c0aa2282-9930-4550-a996-9a7cdf4d7247",
+            "registration_status": "pending_payment",
+            "payment_required": true,
+            "payment_id": "0d0efa93-8579-4f79-8625-1623d120d15f",
+            "payment_status": "pending_provider",
+            "payment_url": "https://test-payment.momo.vn/v2/gateway/pay?t=TU9NT3xtb21vLWMwYWEyMjgyLTk5MzAtNDU1MC1hOTk2LTlhN2NkZjRkNzI0Nw&s=c96a353b06148de54300565e170d44dc90cf7a795a36b97225ec5d3e23fdee28",
+            "next_action": "redirect_to_payment"
+          }
+        }
+      },
+      {
+        "student": "student08",
+        "idempotencyKey": "demo-oversell-1779007804109-6-student08",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student09",
+        "idempotencyKey": "demo-oversell-1779007804111-7-student09",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student10",
+        "idempotencyKey": "demo-oversell-1779007804111-8-student10",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student11",
+        "idempotencyKey": "demo-oversell-1779007804111-9-student11",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student12",
+        "idempotencyKey": "demo-oversell-1779007804112-10-student12",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student13",
+        "idempotencyKey": "demo-oversell-1779007804112-11-student13",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student14",
+        "idempotencyKey": "demo-oversell-1779007804113-12-student14",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student15",
+        "idempotencyKey": "demo-oversell-1779007804114-13-student15",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student16",
+        "idempotencyKey": "demo-oversell-1779007804114-14-student16",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student17",
+        "idempotencyKey": "demo-oversell-1779007804115-15-student17",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student18",
+        "idempotencyKey": "demo-oversell-1779007804116-16-student18",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student19",
+        "idempotencyKey": "demo-oversell-1779007804119-17-student19",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student20",
+        "idempotencyKey": "demo-oversell-1779007804123-18-student20",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student21",
+        "idempotencyKey": "demo-oversell-1779007804125-19-student21",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student22",
+        "idempotencyKey": "demo-oversell-1779007804126-20-student22",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student30",
+        "idempotencyKey": "demo-oversell-1779007804126-21-student30",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      },
+      {
+        "student": "student31",
+        "idempotencyKey": "demo-oversell-1779007804126-22-student31",
+        "status": 409,
+        "body": {
+          "error": {
+            "code": "WORKSHOP_FULL",
+            "message": "Workshop is full"
+          }
+        }
+      }
+    ],
+    "counters": {
+      "id": "3e05f113-ba64-4a9e-8a20-a1cfa4462358",
+      "capacity": 3,
+      "reserved_count": 3,
+      "confirmed_count": 0
+    },
+    "statuses": [
+      {
+        "status": "pending_payment",
+        "count": 3
+      }
+    ],
+    "checks": {
+      "reservedLeCapacity": true,
+      "confirmedLeReserved": true,
+      "activeLeCapacity": true
+    }
+  },
+  "part4": {
+    "apiBase": "http://127.0.0.1:3300",
+    "mockMomoPort": 19090,
+    "part4BackendPort": 3300,
+    "faultWorkshopId": "8b684246-e101-4ae5-940d-83b7ff847edf",
+    "freeWorkshopId": "4cac5e7a-3972-4f6e-ae47-c227799e2747",
+    "attempts": [
+      {
+        "student": "cb_student_01",
+        "idempotencyKey": "cb-real-1779007812223-cb_student_01",
+        "status": 201,
+        "body": {
+          "data": {
+            "registration_id": "3305fe40-f6ec-4c03-af0d-6d98bd805a9d",
+            "registration_status": "pending_payment",
+            "payment_required": true,
+            "payment_id": "b6c44af8-e25e-4e77-a615-060dedf07bed",
+            "payment_status": "unknown",
+            "payment_url": null,
+            "next_action": "redirect_to_payment"
+          }
+        }
+      },
+      {
+        "student": "cb_student_02",
+        "idempotencyKey": "cb-real-1779007812223-cb_student_02",
+        "status": 201,
+        "body": {
+          "data": {
+            "registration_id": "be393b93-036c-4e11-a70d-d77b87c5a6be",
+            "registration_status": "pending_payment",
+            "payment_required": true,
+            "payment_id": "600ccbbf-b6a5-40ec-82d8-dc1d2021d6c3",
+            "payment_status": "unknown",
+            "payment_url": null,
+            "next_action": "redirect_to_payment"
+          }
+        }
+      },
+      {
+        "student": "cb_student_03",
+        "idempotencyKey": "cb-real-1779007812223-cb_student_03",
+        "status": 201,
+        "body": {
+          "data": {
+            "registration_id": "61aae55d-3d4b-4cb0-8436-7f39fe8827cd",
+            "registration_status": "pending_payment",
+            "payment_required": true,
+            "payment_id": "ab72a921-a0e6-4dad-a570-cfc6bb7a35c5",
+            "payment_status": "unknown",
+            "payment_url": null,
+            "next_action": "redirect_to_payment"
+          }
+        }
+      },
+      {
+        "student": "cb_student_04",
+        "idempotencyKey": "cb-real-1779007812223-cb_student_04",
+        "status": 503,
+        "body": {
+          "error": "PAYMENT_GATEWAY_UNAVAILABLE",
+          "message": "Payment gateway is temporarily unavailable",
+          "retry_after": 19
+        }
+      }
+    ],
+    "first503": {
+      "student": "cb_student_04",
+      "idempotencyKey": "cb-real-1779007812223-cb_student_04",
+      "status": 503,
+      "body": {
+        "error": "PAYMENT_GATEWAY_UNAVAILABLE",
+        "message": "Payment gateway is temporarily unavailable",
+        "retry_after": 19
+      }
+    },
+    "noRowFor503Key": 0,
+    "workshopReadStatus": 200,
+    "freeRegistration": {
+      "status": 201,
+      "body": {
+        "data": {
+          "registration_id": "79695e1c-20af-4f14-b530-a3642eff7a8a",
+          "registration_status": "confirmed",
+          "payment_required": false,
+          "qr_available": true
+        }
+      }
+    },
+    "retryAfterSeconds": 19,
+    "snapshotBeforeWait": {
+      "state": "OPEN",
+      "openedAtMs": 1779007841711,
+      "openUntilMs": 1779007861711,
+      "probeInFlight": 0,
+      "failureCount": 0
+    },
+    "probeResponse": {
+      "status": 201,
+      "body": {
+        "data": {
+          "registration_id": "66d3d792-50bd-4cc2-8f36-f7eda4c536cf",
+          "registration_status": "pending_payment",
+          "payment_required": true,
+          "payment_id": "b0f13dee-e1cb-46a9-ab89-3619165a89d6",
+          "payment_status": "pending_provider",
+          "payment_url": "http://127.0.0.1:19090/pay/mock/momo-66d3d792-50bd-4cc2-8f36-f7eda4c536cf",
+          "next_action": "redirect_to_payment"
+        }
+      }
+    },
+    "snapshotAfterProbe": {
+      "state": "CLOSED",
+      "openedAtMs": null,
+      "openUntilMs": null,
+      "probeInFlight": 0,
+      "failureCount": 0
+    }
+  }
+}
